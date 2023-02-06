@@ -1,7 +1,24 @@
+#!/usr/bin/env python
+"""
+Provides control for a stepper-motor setup. Allows for two-directional 
+movement and rotation at varying speeds. Allows for use of `step()`, to shift 
+motor individual or multiple steps.
+functions.
+"""
 import time
 
 import RPi.GPIO as GPIO
 
+__author__ = "Ben Kraft"
+__copyright__ = "None"
+__credits__ = "Ben Kraft"
+__license__ = "MIT"
+__version__ = "1.0"
+__maintainer__ = "Ben Kraft"
+__email__ = "benjamin.kraft@tufts.edu"
+__status__ = "Prototype"
+
+# Establishes stepper sequences
 HALFSTEP_SEQUENCE = (
     (1, 0, 0, 0),
     (1, 1, 0, 0),
@@ -143,5 +160,6 @@ def pin_cleanup() -> None:
     GPIO.cleanup()  # type: ignore
 
 
+# Runs main only from command line call instead of library call
 if __name__ == "__main__":
     main()
