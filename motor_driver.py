@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-Provides control for a stepper-motor setup. Allows for two-directional 
-movement and rotation at varying speeds. Allows for use of `step()`, to shift 
-motor individual or multiple steps.
-functions.
+Allows for the control of a single stepper motor. step() function 
+allows for customization of stepping sequence, direction, duration, and speed 
+of motor. Includes a full and half-step sequence as well as single or offset 
+stepping options.
 """
 import time
 
