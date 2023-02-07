@@ -20,45 +20,60 @@ __email__ = "benjamin.kraft@tufts.edu"
 __status__ = "Prototype"
 
 
-# Defines motor spins
-class Direction(Enum):
+# Defines motor spin directions
+class Directions(Enum):
     CLOCKWISE = 1
     COUNTER_CLOCKWISE = -1
 
 
 # Defines a "Sequence" type
 class Sequence:
-    def __init__(self, stages: tuple[tuple[int, ...], ...]) -> None:
+    def __init__(self, *stages: tuple[int, ...], step_size: int = 1) -> None:
+        # Assigns members
         self.stages = stages
+        self.step_size = step_size
+        self.length = len(self.stages)
 
-    def get_oriented(self, direction: Direction) -> tuple[tuple[int, ...], ...]:
-        return self.stages[:: direction.value]
+    def adjust_stages(self, num_steps: int, direction: Directions) -> None:
+        """
+        Iterates sequence to fit direction and number of steps.
+        """
+        # Divides number of steps by number of steps in sequence
+        multiplier, remainder = divmod(num_steps, (self.length // self.step_size))
+        # Prints warning
+        if remainder:
+            print(
+                "WARNING: Number of steps not factor of sequence. Future steps might mis-align."
+            )
+        # Re-arranges sequence if specified
+        base_stages = self.stages[:: direction.value]
+        # Creates a short sequence from remaining steps
+        remainder_stages = base_stages[: (remainder * self.step_size)]
+        # Builds a long sequence from "quotient" number of sequences and remainder
+        self.stages = base_stages * multiplier + remainder_stages
 
 
-# Establishes stepper sequences
+# Establishes stepper motor sequences
 class Sequences:
     HALFSTEP = Sequence(
-        (
-            (1, 0, 0, 0),
-            (1, 1, 0, 0),
-            (0, 1, 0, 0),
-            (0, 1, 1, 0),
-            (0, 0, 1, 0),
-            (0, 0, 1, 1),
-            (0, 0, 0, 1),
-            (1, 0, 0, 1),
-        )
+        (1, 0, 0, 0),
+        (1, 1, 0, 0),
+        (0, 1, 0, 0),
+        (0, 1, 1, 0),
+        (0, 0, 1, 0),
+        (0, 0, 1, 1),
+        (0, 0, 0, 1),
+        (1, 0, 0, 1),
+        step_size=2,
     )
     WHOLESTEP = Sequence(
-        (
-            (1, 0, 0, 1),
-            (1, 1, 0, 0),
-            (0, 1, 1, 0),
-            (0, 0, 1, 1),
-        )
+        (1, 0, 0, 1),
+        (1, 1, 0, 0),
+        (0, 1, 1, 0),
+        (0, 0, 1, 1),
     )
-    LOCK = Sequence(((1, 0, 0, 1),))
-    UNLOCK = Sequence(((0, 0, 0, 0),))
+    LOCK = Sequence((1, 0, 0, 1))
+    UNLOCK = Sequence((0, 0, 0, 0))
 
 
 MINIMUM_STEP_DELAY = 0.005
@@ -68,7 +83,7 @@ MOTOR = (11, 12, 13, 15)
 
 def main() -> None:
     """
-    Runs main program actions.
+    Runs main test motor protocol
     """
     start_time = time.time()
 
@@ -77,9 +92,12 @@ def main() -> None:
         # Sequence of motor actions
         lock_motor()
         time.sleep(1)
-        step(200, Sequences.HALFSTEP, Direction.COUNTER_CLOCKWISE)
+        step(200, Sequences.HALFSTEP, Directions.COUNTER_CLOCKWISE)
         lock_motor()
-        time.sleep(5)
+        time.sleep(2)
+        unlock_motor()
+        step(400, Sequences.WHOLESTEP, Directions.CLOCKWISE, 3 * MINIMUM_STEP_DELAY)
+        time.sleep(1)
 
     except KeyboardInterrupt:
         # Turns off pins left on
@@ -94,30 +112,17 @@ def main() -> None:
 def step(
     num_steps: int = 1,
     sequence: Sequence = Sequences.HALFSTEP,
-    direction: Direction = Direction.CLOCKWISE,
+    direction: Directions = Directions.CLOCKWISE,
     delay: float = MINIMUM_STEP_DELAY * 2,
 ) -> None:
     """
     Allows for a specified number of steps to be run in a direction using a
     sequence of custom delay.
     """
-    # Defines number of steps within any given sequence
-    SEQUENCE_STEPS = 4
-    # Defines number of stages per step in sequence
-    step_length = len(sequence.stages) // SEQUENCE_STEPS
-    # Finds quotient and remainder from steps
-    quotient, remainder = divmod(num_steps, SEQUENCE_STEPS)
-    # Prints warning
-    if remainder:
-        print("WARNING: Steps not factor of 8. Future steps might mis-align.")
-    # Re-arranges sequence if specified
-    base_stages = sequence.get_oriented(direction)
-    # Creates a short sequence from remaining steps
-    short_stages = base_stages[: (remainder * step_length)]
-    # Builds a long sequence from "quotient" number of sequences and remainder
-    combined_stages = base_stages * quotient + short_stages
-    # Runs motor with custom sequence
-    _run_motor(Sequence(combined_stages), (delay / step_length))
+    # Fits sequence to number of steps and direction
+    sequence.adjust_stages(num_steps, direction)
+    # Runs sequence with appropriate delay
+    _run_motor(sequence, (delay / sequence.step_size))
 
 
 def _run_motor(sequence: Sequence, delay: float = MINIMUM_STEP_DELAY) -> None:
