@@ -6,6 +6,7 @@ of motor. Includes a full and half-step sequence as well as single or offset
 stepping options.
 """
 import time
+from copy import copy
 
 import RPi.GPIO as GPIO
 
@@ -46,31 +47,15 @@ class Sequence:
     A class for stepper motor sequences. Consist of 4-integer motor "stages".
     """
 
-    def __init__(self, *stages: tuple[int, int, int, int], step_size: int = 1) -> None:
+    def __init__(
+        self, stages: tuple[tuple[int, int, int, int], ...], step_size: int = 1
+    ) -> None:
         # Assigns members
         self.stages = stages
         self.step_size = step_size
 
     def lengthen(self, number: int):
         self.stages = self.stages * number
-
-    def adjust_stages(self, num_steps: int, direction: Direction) -> None:
-        """
-        Iterates sequence to fit direction and number of steps.
-        """
-        # Divides number of specified steps by number of steps in sequence
-        multiplier, remainder = divmod(num_steps, (len(self.stages) // self.step_size))
-        # Prints warning if needed
-        if remainder:
-            print(
-                "WARNING: Number of steps not factor of sequence. Future steps might mis-align."
-            )
-        # Re-arranges sequence if specified
-        oriented_stages = self.stages[:: direction.value]
-        # Creates a short sequence from remaining steps
-        remainder_stages = oriented_stages[: (remainder * self.step_size)]
-        # Builds a long sequence from "quotient" number of sequences and remainder
-        self.stages = oriented_stages * multiplier + remainder_stages
 
 
 class Sequences:
@@ -79,24 +64,28 @@ class Sequences:
     """
 
     HALFSTEP = Sequence(
-        (1, 0, 0, 0),
-        (1, 1, 0, 0),
-        (0, 1, 0, 0),
-        (0, 1, 1, 0),
-        (0, 0, 1, 0),
-        (0, 0, 1, 1),
-        (0, 0, 0, 1),
-        (1, 0, 0, 1),
+        stages=(
+            (1, 0, 0, 0),
+            (1, 1, 0, 0),
+            (0, 1, 0, 0),
+            (0, 1, 1, 0),
+            (0, 0, 1, 0),
+            (0, 0, 1, 1),
+            (0, 0, 0, 1),
+            (1, 0, 0, 1),
+        ),
         step_size=2,
     )
     WHOLESTEP = Sequence(
-        (1, 0, 0, 1),
-        (1, 1, 0, 0),
-        (0, 1, 1, 0),
-        (0, 0, 1, 1),
+        stages=(
+            (1, 0, 0, 1),
+            (1, 1, 0, 0),
+            (0, 1, 1, 0),
+            (0, 0, 1, 1),
+        )
     )
-    LOCK = Sequence((1, 0, 0, 1))
-    UNLOCK = Sequence((0, 0, 0, 0))
+    LOCK = Sequence(((1, 0, 0, 1),))
+    UNLOCK = Sequence(((0, 0, 0, 0),))
 
 
 class Motor:
@@ -128,10 +117,18 @@ def main() -> None:
 
     try:
         pin_setup()
+        MOTOR = Motor(11, 12, 13, 15)
+
         # Sequence of motor actions
         time.sleep(0.5)
 
-        step(200, Sequences.WHOLESTEP, Directions.CLOCKWISE, delay=0.01)
+        step(
+            (MOTOR,),
+            (Directions.CLOCKWISE,),
+            Sequences.WHOLESTEP,
+            num_steps=200,
+            delay=0.01,
+        )
         # step(200, Sequences.WHOLESTEP, Directions.CLOCKWISE, delay=0.01)
 
         # lock_motor()
@@ -150,22 +147,6 @@ def main() -> None:
 
 
 def step(
-    num_steps: int = 1,
-    sequence: Sequence = Sequences.HALFSTEP,
-    direction: Direction = Directions.CLOCKWISE,
-    delay: float = MINIMUM_STEP_DELAY * 2,
-) -> None:
-    """
-    Allows for a specified number of steps to be run in a direction using a
-    sequence of custom delay.
-    """
-    # Fits sequence to number of steps and direction
-    sequence.adjust_stages(num_steps, direction)
-    # Runs sequence with appropriate delay
-    _run_motor(sequence, (delay / sequence.step_size))
-
-
-def steps(
     motors: tuple[Motor, ...],
     directions: tuple[Direction, ...],
     sequence: Sequence = Sequences.HALFSTEP,
@@ -176,13 +157,10 @@ def steps(
     Allows for a specified number of steps to be run in a direction using a
     sequence of custom delay.
     """
-    # Fits sequence to number of steps and direction
-    sequences_list: list[Sequence] = []
-    for direction in directions:
-        new_sequence = sequence
-        new_sequence.adjust_stages(num_steps, direction)
-        sequences_list.append(new_sequence)
-
+    # Fits sequence to number of steps
+    extended_sequence = extend_sequence(sequence, num_steps)
+    # Creates list of sequences in correct orientations
+    sequences_list = group_sequences(extended_sequence, directions)
     print(sequences_list)
 
     # Runs sequence with appropriate delay
@@ -237,14 +215,12 @@ def _run_motors(
         # For each pin in stage
         for pin_index in range(len(sample_stage)):
             # print(f"pin index: {pin_index}")
-
             # For each motor:
             for motor_index, motor in enumerate(motors):
                 # Acquires current stages
                 current_stages = sequences[motor_index].stages
                 # Finds pin level of stage
                 level = current_stages[stage_index][pin_index]
-
                 # print(f"motor: {motor_index}, level: {level}")
                 # Sets motor pin to specified level
                 GPIO.output(motor.pins[pin_index], level)  # type: ignore
@@ -252,8 +228,36 @@ def _run_motors(
         time.sleep(delay)
 
 
-def expand_sequence(sequence: Sequence, size: int) -> tuple[Sequence, ...]:
-    return (sequence,) * size
+def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
+    """
+    Iterates sequence to fit number of steps.
+    """
+    stages, step_size = sequence.stages, sequence.step_size
+    # Divides number of specified steps by number of steps in sequence
+    multiplier, remainder = divmod(num_steps, (len(stages) // step_size))
+    # Prints warning if needed
+    if remainder:
+        print(
+            "WARNING: Number of steps not factor of sequence. Future steps might mis-align."
+        )
+    # Creates a short sequence from remaining steps
+    remainder_stages = stages[: (remainder * step_size)]
+    # Builds a long sequence from "quotient" number of sequences and remainder
+    return Sequence(stages * multiplier + remainder_stages, step_size)
+
+
+def group_sequences(
+    sequence: Sequence, directions: tuple[Direction, ...]
+) -> tuple[Sequence, ...]:
+    """
+    Creates list of sequences in specified orientations.
+    """
+    # Creates list of sequences iterated in corresponding directions
+    sequences = tuple(
+        Sequence(sequence.stages[:: direction.value]) for direction in directions
+    )
+    # Returns completed list
+    return sequences
 
 
 def lock_motors(motors: tuple[Motor]) -> None:
