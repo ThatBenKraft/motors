@@ -6,7 +6,6 @@ of motor. Includes a full and half-step sequence as well as single or offset
 stepping options.
 """
 import time
-from copy import copy
 
 import RPi.GPIO as GPIO
 
@@ -14,7 +13,7 @@ __author__ = "Ben Kraft"
 __copyright__ = "None"
 __credits__ = "Ben Kraft"
 __license__ = "MIT"
-__version__ = "1.1"
+__version__ = "1.2"
 __maintainer__ = "Ben Kraft"
 __email__ = "benjamin.kraft@tufts.edu"
 __status__ = "Prototype"
@@ -97,16 +96,12 @@ class Motor:
         # Checks number of pins
         if len(pins) != 4:
             raise ValueError("Motor must consist of four integer pins.")
-        # Sets up pins for output
+        # Sets all motor pins to output and disengages them
         for pin in pins:
             GPIO.setup(pin, GPIO.OUT)  # type: ignore
             GPIO.output(pin, False)  # type: ignore
         # Creates member
         self.pins = pins
-
-
-# MOTOR = Motor(11, 12, 13, 15)
-# MOTOR_B = Motor(29, 31, 32, 33)
 
 
 def main() -> None:
@@ -123,13 +118,12 @@ def main() -> None:
         time.sleep(0.5)
 
         step(
-            (MOTOR,),
-            (Directions.CLOCKWISE,),
-            Sequences.WHOLESTEP,
+            motors=(MOTOR,),
+            directions=(Directions.CLOCKWISE,),
             num_steps=200,
+            sequence=Sequences.WHOLESTEP,
             delay=0.01,
         )
-        # step(200, Sequences.WHOLESTEP, Directions.CLOCKWISE, delay=0.01)
 
         # lock_motor()
         # time.sleep(1.5)
@@ -149,8 +143,8 @@ def main() -> None:
 def step(
     motors: tuple[Motor, ...],
     directions: tuple[Direction, ...],
-    sequence: Sequence = Sequences.HALFSTEP,
     num_steps: int = 1,
+    sequence: Sequence = Sequences.HALFSTEP,
     delay: float = MINIMUM_STEP_DELAY * 2,
 ) -> None:
     """
@@ -161,29 +155,8 @@ def step(
     extended_sequence = extend_sequence(sequence, num_steps)
     # Creates list of sequences in correct orientations
     sequences_list = group_sequences(extended_sequence, directions)
-    print(sequences_list)
-
     # Runs sequence with appropriate delay
     _run_motors(motors, tuple(sequences_list), (delay / sequence.step_size))
-
-
-def _run_motor(sequence: Sequence, delay: float = MINIMUM_STEP_DELAY) -> None:
-    """
-    Controls motor to execute sequence using delay.
-    """
-    # Raises error for too small delay
-    if delay < MINIMUM_STEP_DELAY:
-        raise ValueError(
-            f"Too small of delay. Must be equal to or larger than {MINIMUM_STEP_DELAY}s."
-        )
-    # For each stage in sequence:
-    for stage in sequence.stages:
-        # For each pin in stage
-        for pin_index, level in enumerate(stage):
-            # Sets motor pin to specified level
-            GPIO.output(MOTOR.pins[pin_index], level)  # type: ignore
-        # Delays between stages
-        time.sleep(delay)
 
 
 def _run_motors(
@@ -209,19 +182,16 @@ def _run_motors(
 
     # For each stage in sample
     for stage_index in range(len(sample_stages)):
-        # print(f"stage index: {stage_index}")
         # Acquires first stage as sample
         sample_stage = sample_stages[0]
         # For each pin in stage
         for pin_index in range(len(sample_stage)):
-            # print(f"pin index: {pin_index}")
             # For each motor:
             for motor_index, motor in enumerate(motors):
                 # Acquires current stages
                 current_stages = sequences[motor_index].stages
                 # Finds pin level of stage
                 level = current_stages[stage_index][pin_index]
-                # print(f"motor: {motor_index}, level: {level}")
                 # Sets motor pin to specified level
                 GPIO.output(motor.pins[pin_index], level)  # type: ignore
             # Delays between stages
@@ -238,7 +208,7 @@ def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
     # Prints warning if needed
     if remainder:
         print(
-            "WARNING: Number of steps not factor of sequence. Future steps might mis-align."
+            f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
         )
     # Creates a short sequence from remaining steps
     remainder_stages = stages[: (remainder * step_size)]
@@ -281,9 +251,7 @@ def pin_setup() -> None:
     Sets up board mode and motor pins.
     """
     # Sets board mode
-    print("setup board")
     GPIO.setmode(GPIO.BOARD)  # type: ignore
-    # Sets all motor pins to output and disengages them
 
 
 def pin_cleanup() -> None:
