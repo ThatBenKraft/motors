@@ -2,87 +2,89 @@ import time
 
 import gpio_driver
 import numpy as np
-import RPi.GPIO as GPIO
 from apds import APDS
 from dual_motor_threading import weighted_move
 
-K_P = 1.2
+BASE_STEP_COUNT = 4
 
-BASE_STEP_COUNT = 8
+WHITE = (430, 370, 320, 960)
 
+RED = (140, 20, 40, 150)
+BLACK = (5, 5, 5, 10)
+PURPLE = (20, 25, 35, 65)
 
-LED_PIN = 24
-# time.sleep(0.5)
-GPIO.setup(LED_PIN, GPIO.OUT)  # type: ignore
-GPIO.output(LED_PIN, True)  # type: ignore
+K_P = 0.05
 
 
 def main():
 
     gpio_driver.pin_setup("BCM")
-
-    RED = normalize(np.array((50, 20, 20)))
-
-    # # HALF_RED = normalize(np.array((50, 20, 20)))
-    # HALF_RED =
-    HALF_RED = normalize(np.array((40, 20, 20)))
-
-    step_nums = [BASE_STEP_COUNT, BASE_STEP_COUNT]
     sensor = APDS()
 
-    LINE_MULTIPLIER = 4
+    ON_COLOR = RED
+
+    RIGHT_TURN_WEIGHT = 1
+    LEFT_TURN_WEIGHT = 4
 
     try:
 
+        direction_weight = BASE_STEP_COUNT
+
         while True:
 
-            raw_color = sensor.get_color()[:3]
-            # print(f"Raw color: {raw_color}")
-            color = normalize(np.array(raw_color))
+            color = sensor.get_color()
             print(f"Adjusted color: {color}")
 
-            red_error = find_error(color, RED)
-            half_red_error = find_error(color, HALF_RED)
+            color_error = find_error(color, ON_COLOR) * K_P
 
-            print(f"Red Error: {red_error}\nHalf Red Error: {half_red_error}")
+            print(f"On Color Error: {color_error}")
 
-            if half_red_error < red_error:
-                step_nums[0] += 1
-                step_nums[1] -= 1
-                # LEFT_MOTOR_THREAD.num_steps += 1
-                # RIGHT_MOTOR_THREAD.num_steps -= 1
-            elif half_red_error > red_error:
-                step_nums[0] -= LINE_MULTIPLIER
-                step_nums[1] += LINE_MULTIPLIER
-                # LEFT_MOTOR_THREAD.num_steps -= LINE_MULTIPLIER
-                # RIGHT_MOTOR_THREAD.num_steps += LINE_MULTIPLIER
+            # GUIDES RIGHT
+            if color_error > 30:
+                direction_weight += RIGHT_TURN_WEIGHT
+            # GUIDES LEFT
+            # elif on_color_error < off_color_error:
+            elif color_error < 5:
+                direction_weight -= LEFT_TURN_WEIGHT
+
+            LOW_LIMIT = int(BASE_STEP_COUNT * 0.7)
+            HIGH_LIMIT = int(BASE_STEP_COUNT * 1.3)
+
+            if direction_weight < LOW_LIMIT:
+                direction_weight = LOW_LIMIT
+            elif direction_weight > HIGH_LIMIT:
+                direction_weight = HIGH_LIMIT
+
+            print(f"Direction Weight: {direction_weight}")
+
+            step_nums = (direction_weight, 2 * BASE_STEP_COUNT - direction_weight)
 
             print(f"Step nums: {step_nums}")
 
-            if step_nums[0] < BASE_STEP_COUNT * 0.75:
-                step_nums = [int(BASE_STEP_COUNT * 0.75), int(BASE_STEP_COUNT * 1.25)]
+            time.sleep(0.1)
 
-            if step_nums[1] < BASE_STEP_COUNT * 0.75:
-                step_nums = [int(BASE_STEP_COUNT * 1.75), int(BASE_STEP_COUNT * 0.25)]
-
-            weighted_move(tuple(step_nums)[::-1])
-
-            time.sleep(0.5)
+            weighted_move((step_nums)[::-1], delay=0.01)
 
     except KeyboardInterrupt:
 
         gpio_driver.pin_cleanup()
 
 
-def normalize(color):
-    return color / max(color)
+def normalize(color: tuple[int, int, int, int]):
+    array = np.array(color)
+    return array / max(array)
 
 
-def find_error(color, base):
-    # Finds difference between colors
-    difference = base - color
+def find_error(color, base) -> float:
+
+    sum = 0
+    for i in range(len(color)):
+        # Finds difference between colors
+        difference = base[i] - color[i]
+        # Adds to sum
+        sum += abs(difference)
     # Returns the sum of the absolute value of each difference
-    return sum(abs(color) for color in difference)
+    return round(sum, 3)
 
 
 def at_limits(step_nums) -> bool:

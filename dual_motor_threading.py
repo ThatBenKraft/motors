@@ -33,8 +33,6 @@ class MotorThread(Thread):
 
     def run(self):
 
-        time.sleep(1)
-
         print("Starting " + str(self.name))
 
         gpio_driver.step(
@@ -51,14 +49,6 @@ def weighted_move(
     Runs motor threads with number of steps.
     """
     # Defines a number of seconds in which the steps will take place
-    MOVE_TIME = 1
-
-    # for index, thread in enumerate(MOTOR_THREADS):
-    #     thread.num_steps = num_steps[index]
-    #     thread.delay = MOVE_TIME / num_steps[index]
-
-    # LEFT_MOTOR_THREAD.delay = MOVE_TIME / num_steps[0]
-    # RIGHT_MOTOR_THREAD.delay = MOVE_TIME / num_steps[1]
 
     LEFT_MOTOR_THREAD = MotorThread(
         LEFT_MOTOR, Directions.COUNTER_CLOCKWISE, num_steps[0], delay=delay
@@ -73,21 +63,3 @@ def weighted_move(
     while True:
         if threading.active_count() == 1:
             break
-
-
-# gpio_driver.step(
-#     motors=MOTORS,
-#     directions=(Directions.COUNTER_CLOCKWISE, Directions.CLOCKWISE),
-#     num_steps=25,
-#     delay=MINIMUM_STEP_DELAY,
-# )
-
-
-# time.sleep(1)
-# weighted_move((200, 200))
-
-
-# time.sleep(1)
-# print("what")
-
-# weighted_move((200, 200))

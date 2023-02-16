@@ -104,6 +104,19 @@ class Motor:
         self.pins = pins
 
 
+BOARD_MODE = 10
+BCM_MODE = 11
+
+
+# class Motors:
+
+#     BOARD_LEFT = Motor(11, 12, 13, 15)
+#     BOARD_RIGHT = Motor(29, 31, 32, 33)
+
+#     BCM_LEFT = Motor(17, 18, 27, 22)
+#     BCM_RIGHT = Motor(5, 6, 12, 13)
+
+
 def main() -> None:
     """
     Runs main test motor protocol
@@ -111,19 +124,21 @@ def main() -> None:
     start_time = time.time()
 
     try:
-        pin_setup("BOARD")
-        MOTOR = Motor(11, 12, 13, 15)
+        pin_setup("BCM")
+        # MOTOR = Motor(11, 12, 13, 15)
 
         # Sequence of motor actions
         time.sleep(0.5)
 
-        step(
-            motors=(MOTOR,),
-            directions=(Directions.CLOCKWISE,),
-            num_steps=50,
-            sequence=Sequences.WHOLESTEP,
-            delay=0.01,
-        )
+        # print("mode" + str(GPIO.getmode()))
+
+        # step(
+        #     motors=(MOTOR,),
+        #     directions=(Directions.CLOCKWISE,),
+        #     num_steps=50,
+        #     sequence=Sequences.WHOLESTEP,
+        #     delay=0.01,
+        # )
 
         # lock_motor()
         # time.sleep(1.5)

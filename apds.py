@@ -1,6 +1,7 @@
 import time
 
 import board
+import RPi.GPIO as GPIO
 from adafruit_apds9960.apds9960 import APDS9960
 
 I2C = board.I2C()
@@ -15,7 +16,7 @@ class APDS:
         self.sensor = APDS9960(I2C)
         self.sensor.enable_proximity = enable_proximity
         self.sensor.enable_color = enable_color
-        self.sensor.color_gain = 0
+        self.sensor.color_gain = 1
         self.sensor.color_integration_time = 100
         self.get_color()
 
@@ -32,6 +33,13 @@ class APDS:
         return self.sensor.color_data
 
 
+GPIO.setmode(GPIO.BCM)  # type: ignore
+LED_PIN = 24
+# time.sleep(0.5)
+GPIO.setup(LED_PIN, GPIO.OUT)  # type: ignore
+GPIO.output(LED_PIN, True)  # type: ignore
+
+
 def main() -> None:
 
     sensor = APDS()
@@ -41,6 +49,7 @@ def main() -> None:
             print(f"Proximity: {sensor.get_proximity()}")
             print(f"Color: {sensor.get_color()}")
             time.sleep(0.5)
+            # print("mode" + str(GPIO.getmode()))
         except KeyboardInterrupt:
             break
 
