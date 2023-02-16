@@ -110,14 +110,4 @@ def degrees_to_steps(degrees: float) -> int:
     )
 
 
-# while True:
-#     time.sleep(1)
-#     colors = SENSOR.get_color()
-#     alpha = colors[3]
-#     print(colors)
-#     if alpha:
-#         newList = [round(color / alpha, 3) for color in colors]
-#         print(newList)
-
-
-gpio_driver.pin_cleanup()
+gpio_driver.board_cleanup()

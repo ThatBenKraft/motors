@@ -108,15 +108,6 @@ BOARD_MODE = 10
 BCM_MODE = 11
 
 
-# class Motors:
-
-#     BOARD_LEFT = Motor(11, 12, 13, 15)
-#     BOARD_RIGHT = Motor(29, 31, 32, 33)
-
-#     BCM_LEFT = Motor(17, 18, 27, 22)
-#     BCM_RIGHT = Motor(5, 6, 12, 13)
-
-
 def main() -> None:
     """
     Runs main test motor protocol
@@ -124,7 +115,7 @@ def main() -> None:
     start_time = time.time()
 
     try:
-        pin_setup("BCM")
+        board_setup("BCM")
         # MOTOR = Motor(11, 12, 13, 15)
 
         # Sequence of motor actions
@@ -147,9 +138,9 @@ def main() -> None:
 
     except KeyboardInterrupt:
         # Turns off pins left on
-        pin_cleanup()
+        board_cleanup()
     # Turns off pins left on
-    pin_cleanup()
+    board_cleanup()
     # Calculates and reports execution time
     elapsed_time = round((time.time() - start_time), 3)
     print("Execution time:", elapsed_time, "seconds")
@@ -261,7 +252,7 @@ def unlock_motor(motors: tuple[Motor]) -> None:
     _run_motors(motors, (Sequences.UNLOCK,) * len(motors))
 
 
-def pin_setup(mode: str) -> None:
+def board_setup(mode: str) -> None:
     """
     Sets up board mode and motor pins. Mode is BOARD or BCM.
     """
@@ -274,7 +265,7 @@ def pin_setup(mode: str) -> None:
         raise ValueError("Use 'BCM' or 'BOARD' modes.")
 
 
-def pin_cleanup() -> None:
+def board_cleanup() -> None:
     """
     Turns off any pins left on.
     """
