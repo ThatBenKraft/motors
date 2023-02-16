@@ -111,7 +111,7 @@ def main() -> None:
     start_time = time.time()
 
     try:
-        pin_setup()
+        pin_setup("BOARD")
         MOTOR = Motor(11, 12, 13, 15)
 
         # Sequence of motor actions
@@ -144,7 +144,7 @@ def step(
     motors: tuple[Motor, ...],
     directions: tuple[Direction, ...],
     num_steps: int = 1,
-    sequence: Sequence = Sequences.HALFSTEP,
+    sequence: Sequence = Sequences.WHOLESTEP,
     delay: float = MINIMUM_STEP_DELAY * 2,
 ) -> None:
     """
@@ -184,6 +184,7 @@ def _run_motors(
     for stage_index in range(len(sample_stages)):
         # Acquires first stage as sample
         sample_stage = sample_stages[0]
+        print(f"Completes stage {stage_index}")
         # For each pin in stage
         for pin_index in range(len(sample_stage)):
             # For each motor:
@@ -205,6 +206,7 @@ def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
     stages, step_size = sequence.stages, sequence.step_size
     # Divides number of specified steps by number of steps in sequence
     multiplier, remainder = divmod(num_steps, (len(stages) // step_size))
+    print(f"Long sequence is {multiplier} chunks long")
     # Prints warning if needed
     if remainder:
         print(
@@ -246,12 +248,18 @@ def unlock_motor(motors: tuple[Motor]) -> None:
     _run_motors(motors, (Sequences.UNLOCK,) * len(motors))
 
 
-def pin_setup() -> None:
+def pin_setup(mode: str) -> None:
     """
-    Sets up board mode and motor pins.
+    Sets up board mode and motor pins. Mode is BOARD or BCM.
     """
     # Sets board mode
-    GPIO.setmode(GPIO.BOARD)  # type: ignore
+    if mode == "BOARD":
+        GPIO.setmode(GPIO.BOARD)  # type: ignore
+    elif mode == "BCM":
+        # GPIO.setmode(GPIO.BCM)  # type:ignore
+        pass
+    else:
+        raise ValueError("Use 'BCM' or 'BOARD' modes.")
 
 
 def pin_cleanup() -> None:
