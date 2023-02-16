@@ -120,7 +120,7 @@ def main() -> None:
         step(
             motors=(MOTOR,),
             directions=(Directions.CLOCKWISE,),
-            num_steps=200,
+            num_steps=50,
             sequence=Sequences.WHOLESTEP,
             delay=0.01,
         )
@@ -184,7 +184,6 @@ def _run_motors(
     for stage_index in range(len(sample_stages)):
         # Acquires first stage as sample
         sample_stage = sample_stages[0]
-        print(f"Completes stage {stage_index}")
         # For each pin in stage
         for pin_index in range(len(sample_stage)):
             # For each motor:
@@ -206,12 +205,11 @@ def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
     stages, step_size = sequence.stages, sequence.step_size
     # Divides number of specified steps by number of steps in sequence
     multiplier, remainder = divmod(num_steps, (len(stages) // step_size))
-    print(f"Long sequence is {multiplier} chunks long")
     # Prints warning if needed
-    if remainder:
-        print(
-            f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
-        )
+    # if remainder:
+    #     print(
+    #         f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
+    #     )
     # Creates a short sequence from remaining steps
     remainder_stages = stages[: (remainder * step_size)]
     # Builds a long sequence from "quotient" number of sequences and remainder
@@ -256,8 +254,7 @@ def pin_setup(mode: str) -> None:
     if mode == "BOARD":
         GPIO.setmode(GPIO.BOARD)  # type: ignore
     elif mode == "BCM":
-        # GPIO.setmode(GPIO.BCM)  # type:ignore
-        pass
+        GPIO.setmode(GPIO.BCM)  # type:ignore
     else:
         raise ValueError("Use 'BCM' or 'BOARD' modes.")
 

@@ -15,8 +15,8 @@ class APDS:
         self.sensor = APDS9960(I2C)
         self.sensor.enable_proximity = enable_proximity
         self.sensor.enable_color = enable_color
-        self.sensor.color_gain = 2
-        self.sensor.color_integration_time = 72
+        self.sensor.color_gain = 0
+        self.sensor.color_integration_time = 100
         self.get_color()
 
     def get_proximity(self) -> int:
@@ -29,11 +29,7 @@ class APDS:
         """
         Returns the RGBA values from the connected sensor.
         """
-        # if self.sensor.color_data_ready:
         return self.sensor.color_data
-        # else:
-        #     print("ERROR: Color data not ready")
-        #     return (0, 0, 0, 0)
 
 
 def main() -> None:
