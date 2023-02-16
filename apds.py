@@ -33,9 +33,9 @@ class APDS:
         return self.sensor.color_data
 
 
+# Sets up LED
 GPIO.setmode(GPIO.BCM)  # type: ignore
 LED_PIN = 24
-# time.sleep(0.5)
 GPIO.setup(LED_PIN, GPIO.OUT)  # type: ignore
 GPIO.output(LED_PIN, True)  # type: ignore
 

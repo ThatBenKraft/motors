@@ -1,7 +1,6 @@
 import time
 
 import gpio_driver
-import numpy as np
 from apds import APDS
 from dual_motor_threading import weighted_move
 
@@ -11,7 +10,7 @@ RED = (140, 20, 40, 150)
 BLACK = (5, 5, 5, 10)
 PURPLE = (20, 25, 35, 65)
 BLUE = ()
-
+# Defines proportional constant
 K_P = 0.05
 
 
@@ -45,10 +44,10 @@ def main():
             # RIDES LEFT SIDE OF LINE
             # Guides right if error is high
             if color_error > 30:
-                step_weights += RIGHT_TURN_WEIGHT
+                step_weights -= RIGHT_TURN_WEIGHT
             # Guides left if color error is low
             elif color_error < 15:
-                step_weights -= LEFT_TURN_WEIGHT
+                step_weights += LEFT_TURN_WEIGHT
 
             # Corrects out-of-range values
             if step_weights < LOW_CORRECT_LIMIT:
@@ -62,7 +61,7 @@ def main():
 
             time.sleep(0.1)
             # Moves
-            weighted_move((step_nums)[::-1], delay=0.01)
+            weighted_move(step_nums, delay=0.01)
 
     except KeyboardInterrupt:
 
@@ -73,14 +72,12 @@ def find_error(color: tuple[int, ...], base: tuple[int, ...]) -> float:
     """
     Finds an error value between the base and provided color.
     """
-    sum = 0
-    for i in range(len(color)):
-        # Finds difference between colors
-        difference = base[i] - color[i]
-        # Adds to sum
-        sum += abs(difference)
-    # Returns the sum of the absolute value of each difference
-    return round(sum, 3)
+    # Finds number of channels
+    num_channels = range(len(base))
+    # Finds the differences between channels
+    differences = (abs(base[i] - color[i]) for i in num_channels)
+    # Sums the differences and rounds
+    return round(sum(differences), 3)
 
 
 if __name__ == "__main__":

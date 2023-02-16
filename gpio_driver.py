@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# gpio_driver.py
 """
 Allows for the control of a single stepper motor. step() function 
 allows for customization of stepping sequence, direction, duration, and speed 
@@ -116,25 +117,6 @@ def main() -> None:
 
     try:
         board_setup("BCM")
-        # MOTOR = Motor(11, 12, 13, 15)
-
-        # Sequence of motor actions
-        time.sleep(0.5)
-
-        # print("mode" + str(GPIO.getmode()))
-
-        # step(
-        #     motors=(MOTOR,),
-        #     directions=(Directions.CLOCKWISE,),
-        #     num_steps=50,
-        #     sequence=Sequences.WHOLESTEP,
-        #     delay=0.01,
-        # )
-
-        # lock_motor()
-        # time.sleep(1.5)
-        # unlock_motor()
-        # step(400, Sequences.WHOLESTEP, Directions.CLOCKWISE, 3 * MINIMUM_STEP_DELAY)
 
     except KeyboardInterrupt:
         # Turns off pins left on
@@ -160,9 +142,34 @@ def step(
     # Fits sequence to number of steps
     extended_sequence = extend_sequence(sequence, num_steps)
     # Creates list of sequences in correct orientations
-    sequences_list = group_sequences(extended_sequence, directions)
+    sequences_list = tuple(
+        direction_sequence(extended_sequence, direction) for direction in directions
+    )
     # Runs sequence with appropriate delay
-    _run_motors(motors, tuple(sequences_list), (delay / sequence.step_size))
+    if len(motors) == 1:
+        _run_motor(motors[0], sequences_list[0], (delay / sequence.step_size))
+    elif len(motors) >= 2:
+        _run_motors(motors, sequences_list, (delay / sequence.step_size))
+
+
+def _run_motor(
+    motor: Motor, sequence: Sequence, delay: float = MINIMUM_STEP_DELAY
+) -> None:
+    """
+    Controls a single motor to execute a sequence.
+    """
+    if delay < MINIMUM_STEP_DELAY:
+        raise ValueError(
+            f"Too small of delay. Must be equal to or larger than {MINIMUM_STEP_DELAY}s."
+        )
+    # For each stage in sequence
+    for stage in sequence.stages:
+        # For each pin level in stage
+        for pin_index, level in enumerate(stage):
+            # Sets motor pin to specified level
+            GPIO.output(motor.pins[pin_index], level)  # type: ignore
+        # Delays between stages
+        time.sleep(delay)
 
 
 def _run_motors(
@@ -200,7 +207,7 @@ def _run_motors(
                 level = current_stages[stage_index][pin_index]
                 # Sets motor pin to specified level
                 GPIO.output(motor.pins[pin_index], level)  # type: ignore
-            # Delays between stages
+        # Delays between stages
         time.sleep(delay)
 
 
@@ -212,44 +219,37 @@ def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
     # Divides number of specified steps by number of steps in sequence
     multiplier, remainder = divmod(num_steps, (len(stages) // step_size))
     # Prints warning if needed
-    # if remainder:
-    #     print(
-    #         f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
-    #     )
+    if remainder:
+        print(
+            f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
+        )
     # Creates a short sequence from remaining steps
     remainder_stages = stages[: (remainder * step_size)]
     # Builds a long sequence from "quotient" number of sequences and remainder
     return Sequence(stages * multiplier + remainder_stages, step_size)
 
 
-def group_sequences(
-    sequence: Sequence, directions: tuple[Direction, ...]
-) -> tuple[Sequence, ...]:
+def direction_sequence(sequence: Sequence, direction: Direction) -> Sequence:
     """
-    Creates list of sequences in specified orientations.
+    Creates a sequence in corresponding direction.
     """
-    # Creates list of sequences iterated in corresponding directions
-    sequences = tuple(
-        Sequence(sequence.stages[:: direction.value]) for direction in directions
-    )
-    # Returns completed list
-    return sequences
+    return Sequence(sequence.stages[:: direction.value])
 
 
-def lock_motors(motors: tuple[Motor]) -> None:
+def lock_motor(motor: Motor) -> None:
     """
     Runs a constant signal on the motor. WARNING: Do not keep on.
     """
     # Runs first step of sequence to lock the motor
-    _run_motors(motors, (Sequences.LOCK,) * len(motors))
+    _run_motor(motor, Sequences.LOCK)
 
 
-def unlock_motor(motors: tuple[Motor]) -> None:
+def unlock_motor(motor: Motor) -> None:
     """
     Turns off all motor pins.
     """
     # Turns off all pins to motors
-    _run_motors(motors, (Sequences.UNLOCK,) * len(motors))
+    _run_motor(motor, Sequences.UNLOCK)
 
 
 def board_setup(mode: str) -> None:
