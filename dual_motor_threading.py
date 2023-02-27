@@ -9,7 +9,14 @@ import threading
 from threading import Thread
 
 import gpio_driver
-from gpio_driver import MINIMUM_STEP_DELAY, Direction, Directions, Motor
+from gpio_driver import (
+    MINIMUM_STEP_DELAY,
+    Direction,
+    Directions,
+    Motor,
+    Sequence,
+    Sequences,
+)
 
 __author__ = "Ben Kraft"
 __copyright__ = "None"
@@ -40,13 +47,15 @@ class MotorThread(Thread):
         motor: Motor,
         direction: Direction,
         num_steps: int,
+        sequence: Sequence = Sequences.WHOLESTEP,
         delay: float = MINIMUM_STEP_DELAY * 2,
     ):
         threading.Thread.__init__(self)
         self.motor = motor
         self.direction = direction
-        self.delay = delay
         self.num_steps = num_steps
+        self.sequence = sequence
+        self.delay = delay
 
     def run(self):
         """
@@ -54,7 +63,11 @@ class MotorThread(Thread):
         """
         # print("Starting " + str(self.name))
         gpio_driver.step(
-            (self.motor,), (self.direction,), self.num_steps, delay=self.delay
+            (self.motor,),
+            (self.direction,),
+            self.num_steps,
+            self.sequence,
+            self.delay,
         )
         # print("Exiting " + str(self.name))
 
@@ -76,9 +89,8 @@ def weighted_move(
     LEFT_MOTOR_THREAD.start()
     RIGHT_MOTOR_THREAD.start()
     # Waits for threads to end
-    while True:
-        if threading.active_count() == 1:
-            break
+    LEFT_MOTOR_THREAD.join()
+    RIGHT_MOTOR_THREAD.join()
 
 
 def main():
