@@ -1,7 +1,7 @@
 import time
 
 import board
-import RPi.GPIO as GPIO
+import led
 from adafruit_apds9960.apds9960 import APDS9960
 
 I2C = board.I2C()
@@ -33,11 +33,7 @@ class APDS:
         return self.sensor.color_data
 
 
-# Sets up LED
-GPIO.setmode(GPIO.BCM)  # type: ignore
-LED_PIN = 24
-GPIO.setup(LED_PIN, GPIO.OUT)  # type: ignore
-GPIO.output(LED_PIN, True)  # type: ignore
+led.on()
 
 
 def main() -> None:

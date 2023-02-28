@@ -120,4 +120,4 @@ def degrees_to_steps(degrees: float) -> int:
 #         print(newList)
 
 
-gpio_driver.pin_cleanup()
+gpio_driver.board_cleanup()

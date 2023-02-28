@@ -72,29 +72,23 @@ class MotorThread(Thread):
         # print("Exiting " + str(self.name))
 
 
-def weighted_move(
-    num_steps: tuple[int, int], delay: float = MINIMUM_STEP_DELAY * 2
-) -> None:
+def weighted_move(left_steps: int, right_steps: int, delay: float) -> None:
     """
     Runs motor threads with number of steps.
     """
     # Defines motor threads
 
-    left_direction = Directions.CLOCKWISE
-    if num_steps[0] < 0:
-        num_steps = num_steps[0] * -1, num_steps[1]
-        left_direction = Directions.COUNTER_CLOCKWISE
-
-    right_direction = Directions.COUNTER_CLOCKWISE
-    if num_steps[1] < 0:
-        num_steps = num_steps[0], -1 * num_steps[1]
-        right_direction = Directions.CLOCKWISE
-
     LEFT_MOTOR_THREAD = MotorThread(
-        LEFT_MOTOR, left_direction, num_steps[0], delay=delay
+        LEFT_MOTOR,
+        Directions.COUNTER_CLOCKWISE if left_steps < 0 else Directions.CLOCKWISE,
+        abs(left_steps),
+        delay=delay,
     )
     RIGHT_MOTOR_THREAD = MotorThread(
-        RIGHT_MOTOR, right_direction, num_steps[1], delay=delay
+        RIGHT_MOTOR,
+        Directions.CLOCKWISE if right_steps < 0 else Directions.COUNTER_CLOCKWISE,
+        abs(right_steps),
+        delay=delay,
     )
     # Starts threads
     LEFT_MOTOR_THREAD.start()

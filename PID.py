@@ -7,38 +7,56 @@ from dual_motor_threading import weighted_move
 # Defines proportional constant
 
 MIN_STEPS = 4
-
 BASE_MOVE_COUNT = 2
+
+LINE_MEMORY_SIZE = 6
+
 K_P = 0.01
+K_I = 0.001
+K_D = 0.001
 
 
 def main() -> None:
 
     gpio_driver.board_setup("BCM")
 
+    previous_error = 0
+    error_sum = 0
+    line_memory = [False] * LINE_MEMORY_SIZE
+
     while True:
 
         try:
-
-            x_error, y_error = camera.find_line(True)
-
+            # Finds error from camera
+            x_error, y_error, on_line = camera.find_line(False)
             print(f"X: {x_error}\nY: {y_error}\n")
-
-            x_error_scaled = int(x_error * K_P)
-
-            num_steps = (
-                (BASE_MOVE_COUNT + x_error_scaled) * MIN_STEPS,
-                (BASE_MOVE_COUNT - x_error_scaled) * MIN_STEPS,
+            # Calculates a proportional, integral, and derivative control error
+            pid_value = int(
+                (x_error * K_P) + (error_sum * K_I) + ((x_error - previous_error) * K_D)
             )
-
-            print(f"Number of Steps: {num_steps}")
+            # Updaetes values
+            previous_error = x_error
+            error_sum += x_error
+            # Scales values to fit appropirate number of steps
+            left_steps = (BASE_MOVE_COUNT + pid_value) * MIN_STEPS
+            right_steps = (BASE_MOVE_COUNT - pid_value) * MIN_STEPS
+            # Reports
+            print(f"Number of Steps: L:{left_steps}, R:{right_steps}")
 
             time.sleep(0.1)
-            #             # Moves
-            weighted_move(num_steps, delay=0.01)
+
+            line_memory.insert(0, on_line)
+            line_memory.pop()
+            print(f"Line memory: {line_memory}")
+
+            if sum(line_memory) >= LINE_MEMORY_SIZE - 1:
+                weighted_move(-40, -40, delay=0.01)
+            else:
+                # Moves robot based on number of steps
+                weighted_move(left_steps, right_steps, delay=0.01)
 
         except KeyboardInterrupt:
-
+            # Cleans up board
             gpio_driver.board_cleanup()
             break
 
