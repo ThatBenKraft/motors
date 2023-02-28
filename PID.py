@@ -4,27 +4,45 @@ import camera
 import gpio_driver
 from dual_motor_threading import weighted_move
 
-# Establishes color tones
-
 # Defines proportional constant
-K_P = 0.05
+
+MIN_STEPS = 4
+
+BASE_MOVE_COUNT = 2
+K_P = 0.01
 
 
 def main() -> None:
 
     gpio_driver.board_setup("BCM")
 
-    try:
+    while True:
 
-        x_error, y_error = camera.get_line_position()
+        try:
 
-        print(f"X: {x_error}\nY: {y_error}\n")
+            x_error, y_error = camera.find_line(True)
 
-        time.sleep(0.5)
+            print(f"X: {x_error}\nY: {y_error}\n")
 
-    except KeyboardInterrupt:
+            x_error_scaled = int(x_error * K_P)
 
-        gpio_driver.board_cleanup()
+            num_steps = (
+                (BASE_MOVE_COUNT + x_error_scaled) * MIN_STEPS,
+                (BASE_MOVE_COUNT - x_error_scaled) * MIN_STEPS,
+            )
+
+            print(f"Number of Steps: {num_steps}")
+
+            time.sleep(0.1)
+            #             # Moves
+            weighted_move(num_steps, delay=0.01)
+
+        except KeyboardInterrupt:
+
+            gpio_driver.board_cleanup()
+            break
+
+    # gpio_driver.board_cleanup()
 
 
 # def main():

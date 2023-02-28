@@ -33,8 +33,8 @@ __status__ = "Prototype"
 # RIGHT_MOTOR = Motor(29, 31, 32, 33)
 # BCM Mode pin setup
 gpio_driver.board_setup("BCM")
-LEFT_MOTOR = Motor(17, 18, 27, 22)
-RIGHT_MOTOR = Motor(5, 6, 12, 13)
+RIGHT_MOTOR = Motor(17, 18, 27, 22)
+LEFT_MOTOR = Motor(5, 6, 12, 13)
 
 
 class MotorThread(Thread):
@@ -79,11 +79,22 @@ def weighted_move(
     Runs motor threads with number of steps.
     """
     # Defines motor threads
+
+    left_direction = Directions.CLOCKWISE
+    if num_steps[0] < 0:
+        num_steps = num_steps[0] * -1, num_steps[1]
+        left_direction = Directions.COUNTER_CLOCKWISE
+
+    right_direction = Directions.COUNTER_CLOCKWISE
+    if num_steps[1] < 0:
+        num_steps = num_steps[0], -1 * num_steps[1]
+        right_direction = Directions.CLOCKWISE
+
     LEFT_MOTOR_THREAD = MotorThread(
-        LEFT_MOTOR, Directions.COUNTER_CLOCKWISE, num_steps[0], delay=delay
+        LEFT_MOTOR, left_direction, num_steps[0], delay=delay
     )
     RIGHT_MOTOR_THREAD = MotorThread(
-        RIGHT_MOTOR, Directions.CLOCKWISE, num_steps[1], delay=delay
+        RIGHT_MOTOR, right_direction, num_steps[1], delay=delay
     )
     # Starts threads
     LEFT_MOTOR_THREAD.start()

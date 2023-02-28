@@ -1,19 +1,15 @@
 import math
-import threading
 import time
 from enum import Enum
-from threading import Thread
 
 import gpio_driver
 from apds import APDS
-from gpio_driver import MINIMUM_STEP_DELAY, Direction, Directions, Motor
+from gpio_driver import MINIMUM_STEP_DELAY, Directions, Motor
 
 # gpio_driver.pin_setup()
 
 SENSOR = APDS()
-LEFT_MOTOR = Motor(11, 12, 13, 15)
-RIGHT_MOTOR = Motor(29, 31, 32, 33)
-MOTORS = (LEFT_MOTOR, RIGHT_MOTOR)
+MOTORS = (Motor(11, 12, 13, 15), Motor(29, 31, 32, 33))
 
 
 FORWARDS = (Directions.CLOCKWISE, Directions.COUNTER_CLOCKWISE)
@@ -110,14 +106,25 @@ def degrees_to_steps(degrees: float) -> int:
     )
 
 
-# while True:
-#     time.sleep(1)
-#     colors = SENSOR.get_color()
-#     alpha = colors[3]
-#     print(colors)
-#     if alpha:
-#         newList = [round(color / alpha, 3) for color in colors]
-#         print(newList)
+# move_forwards(30)
+# time.sleep(0.5)
+# turn_left()
+# time.sleep(0.5)
+# print(SENSOR.get_color())
+# time.sleep(0.5)
+# turn_right()
+# time.sleep(0.5)
+# move_backwards(30, Speed.FAST)
+# time.sleep(0.5)
+# print(SENSOR.get_color())
+while True:
+    time.sleep(1)
+    colors = SENSOR.get_color()
+    alpha = colors[3]
+    print(colors)
+    if alpha:
+        newList = [round(color / alpha, 3) for color in colors]
+        print(newList)
 
 
 gpio_driver.pin_cleanup()

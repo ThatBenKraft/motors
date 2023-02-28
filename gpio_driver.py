@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# gpio_driver.py
 """
 Allows for the control of a single stepper motor. step() function 
 allows for customization of stepping sequence, direction, duration, and speed 
@@ -219,10 +218,10 @@ def extend_sequence(sequence: Sequence, num_steps: int) -> Sequence:
     # Divides number of specified steps by number of steps in sequence
     multiplier, remainder = divmod(num_steps, (len(stages) // step_size))
     # Prints warning if needed
-    if remainder:
-        print(
-            f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
-        )
+    # if remainder:
+    #     print(
+    #         f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(stages)}). Future steps might mis-align."
+    #     )
     # Creates a short sequence from remaining steps
     remainder_stages = stages[: (remainder * step_size)]
     # Builds a long sequence from "quotient" number of sequences and remainder
@@ -236,20 +235,20 @@ def direction_sequence(sequence: Sequence, direction: Direction) -> Sequence:
     return Sequence(sequence.stages[:: direction.value])
 
 
-def lock_motor(motor: Motor) -> None:
+def lock_motors(motors: tuple[Motor]) -> None:
     """
     Runs a constant signal on the motor. WARNING: Do not keep on.
     """
     # Runs first step of sequence to lock the motor
-    _run_motor(motor, Sequences.LOCK)
+    _run_motors(motors, (Sequences.LOCK,) * len(motors))
 
 
-def unlock_motor(motor: Motor) -> None:
+def unlock_motor(motors: tuple[Motor]) -> None:
     """
     Turns off all motor pins.
     """
     # Turns off all pins to motors
-    _run_motor(motor, Sequences.UNLOCK)
+    _run_motors(motors, (Sequences.UNLOCK,) * len(motors))
 
 
 def board_setup(mode: str) -> None:
