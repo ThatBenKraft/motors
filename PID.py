@@ -1,35 +1,48 @@
+#!/usr/bin/env python
+# camera.py
+"""
+Acts as a basic PID controller for a dual-motor line-following robot. Does not
+include path-finding or line-scouting (yet).
+"""
 import time
 
 import camera
 import gpio_driver
-from dual_motor_threading import weighted_move
+from dual_motor_controls import weighted_move
 
-# Defines proportional constant
+__author__ = "Ben Kraft"
+__copyright__ = "None"
+__credits__ = "Ben Kraft"
+__license__ = "MIT"
+__version__ = "1.1"
+__maintainer__ = "Ben Kraft"
+__email__ = "benjamin.kraft@tufts.edu"
+__status__ = "Prototype"
 
 MIN_STEPS = 4
 BASE_MOVE_COUNT = 2
 
-LINE_MEMORY_SIZE = 6
-
+# Defines proportional control constants
 K_P = 0.01
 K_I = 0.001
 K_D = 0.001
 
 
 def main() -> None:
-
+    """
+    Runs main PID actions.
+    """
     gpio_driver.board_setup("BCM")
-
+    # Defines variables for integral and derivative control
     previous_error = 0
     error_sum = 0
-    line_memory = [False] * LINE_MEMORY_SIZE
 
     while True:
 
         try:
             # Finds error from camera
             x_error, y_error, on_line = camera.find_line(False)
-            print(f"X: {x_error}\nY: {y_error}\n")
+            print(f"X: {x_error}")
             # Calculates a proportional, integral, and derivative control error
             pid_value = int(
                 (x_error * K_P) + (error_sum * K_I) + ((x_error - previous_error) * K_D)
@@ -44,16 +57,8 @@ def main() -> None:
             print(f"Number of Steps: L:{left_steps}, R:{right_steps}")
 
             time.sleep(0.1)
-
-            line_memory.insert(0, on_line)
-            line_memory.pop()
-            print(f"Line memory: {line_memory}")
-
-            if sum(line_memory) >= LINE_MEMORY_SIZE - 1:
-                weighted_move(-40, -40, delay=0.01)
-            else:
-                # Moves robot based on number of steps
-                weighted_move(left_steps, right_steps, delay=0.01)
+            # Moves motors appropriate amounts
+            weighted_move(left_steps, right_steps, delay=0.01)
 
         except KeyboardInterrupt:
             # Cleans up board

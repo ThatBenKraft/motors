@@ -1,18 +1,23 @@
+#!/usr/bin/env python
+# dual_motor_controls.py
+
 import math
-import threading
 import time
 from enum import Enum
-from threading import Thread
 
 import gpio_driver
 from apds import APDS
-from gpio_driver import MINIMUM_STEP_DELAY, Direction, Directions, Motor
+from gpio_driver import Directions, Motor, StepThread
 
 # gpio_driver.pin_setup()
 
 SENSOR = APDS()
-LEFT_MOTOR = Motor(11, 12, 13, 15)
-RIGHT_MOTOR = Motor(29, 31, 32, 33)
+# BOARD MOTORS
+# LEFT_MOTOR = Motor(11, 12, 13, 15)
+# RIGHT_MOTOR = Motor(29, 31, 32, 33)
+# BCM MOTORS
+RIGHT_MOTOR = Motor(17, 18, 27, 22)
+LEFT_MOTOR = Motor(5, 6, 12, 13)
 MOTORS = (LEFT_MOTOR, RIGHT_MOTOR)
 
 
@@ -27,63 +32,92 @@ STEPS_PER_ROTATION = 200
 WHEEL_RADIUS_MM = 100
 TURNING_RADIUS_MM = 200
 
+BASE_DELAY = gpio_driver.MINIMUM_STEP_DELAY
+gpio_driver.board_setup("BCM")
+
 
 class Speed(Enum):
     """
     Speeds for motor delays.
     """
 
-    FAST = MINIMUM_STEP_DELAY
-    MEDIAL = MINIMUM_STEP_DELAY * 2
-    SLOW = MINIMUM_STEP_DELAY * 4
+    FAST = BASE_DELAY
+    MEDIAL = BASE_DELAY * 2
+    SLOW = BASE_DELAY * 4
 
 
-def move_forwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
+def weighted_move(left_steps: int, right_steps: int, delay: float) -> None:
     """
-    Moves robot forwards custom amount and speed.
+    Runs motor threads with number of steps.
     """
-    gpio_driver.step(
-        motors=MOTORS,
-        directions=FORWARDS,
-        num_steps=distance_to_steps(distance_mm),
-        delay=speed.value,
+    # Defines motor threads
+
+    LEFT_MOTOR_THREAD = StepThread(
+        LEFT_MOTOR,
+        left_steps,
+        Directions.CLOCKWISE,
+        delay=delay,
     )
-
-
-def move_backwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
-    """
-    Moves robot backwards custom amount and speed.
-    """
-    gpio_driver.step(
-        motors=MOTORS,
-        directions=BACKWARDS,
-        num_steps=distance_to_steps(distance_mm),
-        delay=speed.value,
+    RIGHT_MOTOR_THREAD = StepThread(
+        RIGHT_MOTOR,
+        right_steps,
+        Directions.COUNTER_CLOCKWISE,
+        delay=delay,
     )
+    # Starts threads
+    LEFT_MOTOR_THREAD.start()
+    RIGHT_MOTOR_THREAD.start()
+    # Waits for threads to end
+    LEFT_MOTOR_THREAD.join()
+    RIGHT_MOTOR_THREAD.join()
 
 
-def turn_left(degrees=90, speed: Speed = Speed.MEDIAL) -> None:
-    """
-    Moves robot backwards custom amount and speed.
-    """
-    gpio_driver.step(
-        motors=MOTORS,
-        directions=TURN_LEFT,
-        num_steps=degrees_to_steps(degrees),
-        delay=speed.value,
-    )
+# def move_forwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
+#     """
+#     Moves robot forwards custom amount and speed.
+#     """
+#     gpio_driver.step(
+#         motors=MOTORS,
+#         directions=FORWARDS,
+#         num_steps=distance_to_steps(distance_mm),
+#         delay=speed.value,
+#     )
 
 
-def turn_right(degrees=90, speed: Speed = Speed.MEDIAL) -> None:
-    """
-    Moves robot backwards custom amount and speed.
-    """
-    gpio_driver.step(
-        motors=MOTORS,
-        directions=TURN_RIGHT,
-        num_steps=degrees_to_steps(degrees),
-        delay=speed.value,
-    )
+# def move_backwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
+#     """
+#     Moves robot backwards custom amount and speed.
+#     """
+#     gpio_driver.step(
+#         motors=MOTORS,
+#         directions=BACKWARDS,
+#         num_steps=distance_to_steps(distance_mm),
+#         delay=speed.value,
+#     )
+
+
+# def turn_left(degrees=90, speed: Speed = Speed.MEDIAL) -> None:
+#     """
+#     Moves robot backwards custom amount and speed.
+#     """
+#     gpio_driver.step(
+#         motors=MOTORS,
+#         directions=TURN_LEFT,
+#         num_steps=degrees_to_steps(degrees),
+#         delay=speed.value,
+#     )
+
+
+# def turn_right(degrees=90, speed: Speed = Speed.MEDIAL) -> None:
+#     """
+#     Moves robot backwards custom amount and speed.
+#     """
+#     gpio_driver.step(
+#         motors=MOTORS,
+#         directions=TURN_RIGHT,
+#         num_steps=degrees_to_steps(degrees),
+#         delay=speed.value,
+#     )
 
 
 def distance_to_steps(distance_mm: float) -> int:

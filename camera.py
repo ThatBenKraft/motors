@@ -1,6 +1,9 @@
-# Core opencv code provided by Einsteinium Studios
-# Revisions to work with Pi Camera v3 by Briana Bouchard and Kenneth Siu
-
+#!/usr/bin/env python
+# camera.py
+"""
+Provides support for Picamera v3. Limited functionality: used to find a blue 
+line and return error away from center of frame.
+"""
 import time
 
 import cv2
@@ -8,6 +11,15 @@ import led
 import numpy as np
 from libcamera import controls
 from picamera2 import Picamera2
+
+__author__ = "Einsteinium Studios, Briana Bouchard"
+__copyright__ = "None"
+__credits__ = "Briana Bouchard, Kenneth Siu, Ben Kraft"
+__license__ = "MIT"
+__version__ = "1.1"
+__maintainer__ = "Ben Kraft"
+__email__ = "benjamin.kraft@tufts.edu"
+__status__ = "Prototype"
 
 picam = Picamera2()  # assigns camera variable
 picam.set_controls({"AfMode": controls.AfModeEnum.Continuous})  # sets auto focus mode
