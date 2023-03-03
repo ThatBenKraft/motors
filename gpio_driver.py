@@ -65,9 +65,7 @@ class Sequence:
         """
         self.stages = self.stages[:: direction.value]
 
-    def extend(
-        self, num_steps: int, direction: Direction = Directions.CLOCKWISE
-    ) -> None:
+    def extend(self, num_steps: int) -> None:
         """
         Extends/restrits sequence to fit number of steps.
         """
@@ -130,7 +128,7 @@ class Motor:
         self.pins = pins
 
 
-class StepThread(Thread):
+class MotorThread(Thread):
     """
     Allows for motor objects to be used concurrently in threads. MotorThread
     can be passed any motor object, as well as a number of steps, a direction,
@@ -143,7 +141,7 @@ class StepThread(Thread):
         num_steps: int,
         direction: Direction = Directions.CLOCKWISE,
         sequence: Sequence = Sequences.WHOLESTEP,
-        delay: float = MINIMUM_STEP_DELAY * 2,
+        delay: float = MINIMUM_STEP_DELAY,
         flag: bool = False,
     ):
         Thread.__init__(self)
@@ -160,7 +158,7 @@ class StepThread(Thread):
         """
         if self.flag:
             print(f"Starting {self.name}. . .")
-        step(
+        step_motor(
             self.motor,
             self.num_steps,
             self.direction,
@@ -171,42 +169,78 @@ class StepThread(Thread):
             print(f"Stopping {self.name}. . .")
 
 
-def step(
+def step_motors(
+    motors: tuple[Motor, ...],
+    num_steps: tuple[int, ...],
+    directions: tuple[Direction, ...],
+    sequence: Sequence = Sequences.WHOLESTEP,
+    delay=MINIMUM_STEP_DELAY,
+    flag=False,
+) -> None:
+
+    num_motors = len(motors)
+
+    if num_motors != len(directions) or num_motors != len(num_steps):
+        raise ValueError(
+            "Lists of motors, directions, and steps must be of equal size!"
+        )
+
+    threads: list[MotorThread] = []
+
+    for i in range(num_motors):
+
+        thread = MotorThread(
+            motors[i],
+            num_steps[i],
+            directions[i],
+            sequence,
+            delay,
+            flag,
+        )
+        # Adds object to list
+        threads.append(thread)
+        # Starts thread
+        thread.start()
+
+    if flag:
+        print("All motor threads started.")
+
+    for thread in threads:
+        # Wait for all threads to finish
+        thread.join()
+
+    if flag:
+        print("All motor threads joined.")
+
+
+def step_motor(
     motor: Motor,
     num_steps: int,
-    direction: Direction = Directions.CLOCKWISE,
+    direction: Direction,
     sequence: Sequence = Sequences.WHOLESTEP,
-    delay: float = MINIMUM_STEP_DELAY * 2,
+    delay: float = MINIMUM_STEP_DELAY,
 ) -> None:
     """
     Allows for a specified number of steps to be run in a direction using a
     sequence of custom delay.
     """
-    # Returns early if there are no steps.
-    if not num_steps:
-        return
-    # Flips direction if number of steps is negative
-    if num_steps < 0:
-        direction.flip()
-        num_steps *= -1
-    # Fits sequence to number of steps
-    sequence.extend(num_steps)
-    # Orients sequence
-    sequence.orient(direction)
-    # Runs sequence with appropriate delay
-    _run_motor(motor, sequence, (delay / sequence.step_size))
-
-
-def _run_motor(
-    motor: Motor, sequence: Sequence, delay: float = MINIMUM_STEP_DELAY
-) -> None:
-    """
-    Controls a single motor to execute a sequence.
-    """
+    # Returns if delay is too small
     if delay < MINIMUM_STEP_DELAY:
         raise ValueError(
             f"Too small of delay. Must be equal to or larger than {MINIMUM_STEP_DELAY}s."
         )
+    # Returns early if there are no steps.
+    if not num_steps:
+        return
+    # Flips direction if number of steps is negative
+    elif num_steps < 0:
+        direction.flip()
+        num_steps *= -1
+    # Orients sequence
+    sequence.orient(direction)
+    # Fits sequence to number of steps
+    sequence.extend(num_steps)
+
     # For each stage in sequence
     for stage in sequence.stages:
         # For each pin level in stage

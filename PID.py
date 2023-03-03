@@ -8,7 +8,7 @@ import time
 
 import camera
 import gpio_driver
-from dual_motor_controls import weighted_move
+from dual_motor_controls import move_steps
 
 __author__ = "Ben Kraft"
 __copyright__ = "None"
@@ -58,7 +58,7 @@ def main() -> None:
 
             time.sleep(0.1)
             # Moves motors appropriate amounts
-            weighted_move(left_steps, right_steps, delay=0.01)
+            move_steps(left_steps, right_steps, delay=0.01)
 
         except KeyboardInterrupt:
             # Cleans up board
