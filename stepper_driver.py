@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-# GPIO Driver
+# Stepper Driver
 Allows for the control of a single stepper motor. step() function 
 allows for customization of stepping sequence, direction, duration, and speed 
 of motor. Includes a full and half-step sequence as well as single or offset 
@@ -67,7 +67,7 @@ class Sequence:
 
     def extend(self, num_steps: int) -> None:
         """
-        Extends/restrits sequence to fit number of steps.
+        Extends/restricts sequence to fit number of steps.
         """
         # Divides number of specified steps by number of steps in sequence
         multiplier, remainder = divmod(num_steps, (self.length // self.step_size))

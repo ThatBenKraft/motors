@@ -7,10 +7,11 @@ line and return error away from center of frame.
 import time
 
 import cv2
-import led
 import numpy as np
-from libcamera import controls
-from picamera2 import Picamera2
+from libcamera import controls  # type:ignore
+from picamera2 import Picamera2  # type:ignore
+
+import led
 
 __author__ = "Einsteinium Studios, Briana Bouchard"
 __copyright__ = "None"
@@ -58,7 +59,7 @@ def find_line(monitor_display: bool = False) -> tuple[int, int, bool]:
     found. Optional parameter to display camera output.
     """
     # Display camera input
-    image = picam.capture_array("main")
+    image: np.ndarray = picam.capture_array("main")
 
     # Crop the image
     cropped_image = image[
