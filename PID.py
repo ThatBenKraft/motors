@@ -7,7 +7,7 @@ include path-finding or line-scouting (yet).
 import time
 
 import camera
-import gpio_driver
+import stepper_driver
 from dual_motor_controls import move_steps
 
 __author__ = "Ben Kraft"
@@ -32,7 +32,7 @@ def main() -> None:
     """
     Runs main PID actions.
     """
-    gpio_driver.board_setup("BCM")
+    stepper_driver.board_setup("BCM")
     # Defines variables for integral and derivative control
     previous_error = 0
     error_sum = 0
@@ -62,7 +62,7 @@ def main() -> None:
 
         except KeyboardInterrupt:
             # Cleans up board
-            gpio_driver.board_cleanup()
+            stepper_driver.board_cleanup()
             break
 
     # gpio_driver.board_cleanup()

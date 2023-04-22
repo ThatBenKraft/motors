@@ -8,10 +8,9 @@ import time
 
 import cv2
 import numpy as np
+from led import LED
 from libcamera import controls  # type:ignore
 from picamera2 import Picamera2  # type:ignore
-
-import led
 
 __author__ = "Einsteinium Studios, Briana Bouchard"
 __copyright__ = "None"
@@ -26,6 +25,7 @@ picam = Picamera2()  # assigns camera variable
 picam.set_controls({"AfMode": controls.AfModeEnum.Continuous})  # sets auto focus mode
 picam.start()  # activates camera
 
+led = LED()
 led.on()
 
 FULL_WIDTH = 640

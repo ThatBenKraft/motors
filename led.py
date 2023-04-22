@@ -1,21 +1,33 @@
-import gpio_driver
+"""
+Allows for the use of any pin as an LED though an object.
+"""
+
 import RPi.GPIO as GPIO
+import stepper_driver
 
-gpio_driver.board_setup("BCM")
+stepper_driver.board_setup("BCM")
 
-LED_PIN = 24
-GPIO.setup(LED_PIN, GPIO.OUT)  # type: ignore
+DEFAULT_PIN = 24
 
 
-def on(pin: int = LED_PIN) -> None:
+class LED:
     """
-    Turns on LED.
+    Allows for the use of any pin as an LED.
     """
-    GPIO.output(pin, True)  # type: ignore
 
+    def __init__(self, pin: int = DEFAULT_PIN) -> None:
 
-def off(pin: int = LED_PIN) -> None:
-    """
-    Turns off LED.
-    """
-    GPIO.output(pin, False)  # type: ignore
+        GPIO.setup(pin, GPIO.OUT)  # type: ignore
+        self.pin = pin
+
+    def on(self) -> None:
+        """
+        Turns on LED.
+        """
+        GPIO.output(self.pin, True)  # type: ignore
+
+    def off(self) -> None:
+        """
+        Turns on LED.
+        """
+        GPIO.output(self.pin, False)  # type: ignore

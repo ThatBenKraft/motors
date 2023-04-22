@@ -7,8 +7,8 @@ creates directions as well as support for distance/degree movement.
 import math
 from enum import Enum
 
-import gpio_driver as gpio
-from gpio_driver import Directions, Motor
+import stepper_driver as gpio
+from stepper_driver import Directions, Motor
 
 # BOARD MOTORS
 # LEFT_MOTOR = Motor(11, 12, 13, 15)

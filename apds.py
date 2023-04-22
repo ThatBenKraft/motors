@@ -1,8 +1,8 @@
 import time
 
 import board
-import led
 from adafruit_apds9960.apds9960 import APDS9960
+from led import LED
 
 I2C = board.I2C()
 
@@ -33,6 +33,7 @@ class APDS:
         return self.sensor.color_data
 
 
+led = LED()
 led.on()
 
 
