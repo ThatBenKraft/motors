@@ -7,8 +7,8 @@ creates directions as well as support for distance/degree movement.
 import math
 from enum import Enum
 
-import stepper_driver as gpio
-from stepper_driver import Directions, Motor
+import stepper
+from stepper import Directions, Motor
 
 # BOARD MOTORS
 # LEFT_MOTOR = Motor(11, 12, 13, 15)
@@ -30,8 +30,8 @@ STEPS_PER_ROTATION = 200
 WHEEL_RADIUS_MM = 100
 TURNING_RADIUS_MM = 200
 
-BASE_DELAY = gpio.MINIMUM_STEP_DELAY
-gpio.board_setup("BCM")
+BASE_DELAY = stepper.MINIMUM_STEP_DELAY
+stepper.board_setup("BCM")
 
 
 class Speed(Enum):
@@ -46,7 +46,7 @@ class Speed(Enum):
 
 def move_steps(left_steps: int, right_steps: int, delay=BASE_DELAY):
 
-    gpio.step_motors(
+    stepper.step_motors(
         motors=MOTORS,
         directions=FORWARDS,
         num_steps=(left_steps, right_steps),
@@ -58,7 +58,7 @@ def move_forwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
     """
     Moves robot forwards custom amount and speed.
     """
-    gpio.step_motors(
+    stepper.step_motors(
         motors=MOTORS,
         directions=FORWARDS,
         num_steps=(distance_to_steps(distance_mm),) * 2,
@@ -70,7 +70,7 @@ def move_backwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
     """
     Moves robot forwards custom amount and speed.
     """
-    gpio.step_motors(
+    stepper.step_motors(
         motors=MOTORS,
         directions=BACKWARDS,
         num_steps=(distance_to_steps(distance_mm),) * 2,
@@ -82,7 +82,7 @@ def turn_left(degrees: float = 90, speed: Speed = Speed.MEDIAL) -> None:
     """
     Moves robot backwards custom amount and speed.
     """
-    gpio.step_motors(
+    stepper.step_motors(
         motors=MOTORS,
         directions=TURN_LEFT,
         num_steps=(degrees_to_steps(degrees),) * 2,
@@ -94,7 +94,7 @@ def turn_right(degrees: float = 90, speed: Speed = Speed.MEDIAL) -> None:
     """
     Moves robot backwards custom amount and speed.
     """
-    gpio.step_motors(
+    stepper.step_motors(
         motors=MOTORS,
         directions=TURN_RIGHT,
         num_steps=(degrees_to_steps(degrees),) * 2,
@@ -126,4 +126,4 @@ def degrees_to_steps(degrees: float) -> int:
     )
 
 
-gpio.board_cleanup()
+stepper.board_cleanup()

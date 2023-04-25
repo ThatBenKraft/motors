@@ -3,9 +3,9 @@ Allows for the use of any pin as an LED though an object.
 """
 
 import RPi.GPIO as GPIO
-import stepper_driver
+import stepper
 
-stepper_driver.board_setup("BCM")
+stepper.board_setup("BCM")
 
 DEFAULT_PIN = 24
 
