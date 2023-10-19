@@ -16,14 +16,14 @@ from stepper import Directions, Motor
 # BCM MOTORS
 LEFT_MOTOR = Motor(5, 6, 12, 13)
 RIGHT_MOTOR = Motor(17, 18, 27, 22)
-MOTORS = (LEFT_MOTOR, RIGHT_MOTOR)
+MOTORS = [LEFT_MOTOR, RIGHT_MOTOR]
 
 
-FORWARDS = (Directions.CLOCKWISE, Directions.COUNTER_CLOCKWISE)
-BACKWARDS = (Directions.COUNTER_CLOCKWISE, Directions.CLOCKWISE)
+FORWARDS = [Directions.CLOCKWISE, Directions.COUNTER_CLOCKWISE]
+BACKWARDS = [Directions.COUNTER_CLOCKWISE, Directions.CLOCKWISE]
 
-TURN_LEFT = (Directions.COUNTER_CLOCKWISE, Directions.COUNTER_CLOCKWISE)
-TURN_RIGHT = (Directions.CLOCKWISE, Directions.CLOCKWISE)
+TURN_LEFT = [Directions.COUNTER_CLOCKWISE, Directions.COUNTER_CLOCKWISE]
+TURN_RIGHT = [Directions.CLOCKWISE, Directions.CLOCKWISE]
 
 STEPS_PER_ROTATION = 200
 
@@ -45,11 +45,10 @@ class Speed(Enum):
 
 
 def move_steps(left_steps: int, right_steps: int, delay=BASE_DELAY):
-
     stepper.step_motors(
         motors=MOTORS,
         directions=FORWARDS,
-        num_steps=(left_steps, right_steps),
+        num_steps=[left_steps, right_steps],
         delay=delay,
     )
 
@@ -61,7 +60,7 @@ def move_forwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
     stepper.step_motors(
         motors=MOTORS,
         directions=FORWARDS,
-        num_steps=(distance_to_steps(distance_mm),) * 2,
+        num_steps=[distance_to_steps(distance_mm)] * 2,
         delay=speed.value,
     )
 
@@ -73,7 +72,7 @@ def move_backwards(distance_mm: float, speed: Speed = Speed.MEDIAL) -> None:
     stepper.step_motors(
         motors=MOTORS,
         directions=BACKWARDS,
-        num_steps=(distance_to_steps(distance_mm),) * 2,
+        num_steps=[distance_to_steps(distance_mm)] * 2,
         delay=speed.value,
     )
 
@@ -85,7 +84,7 @@ def turn_left(degrees: float = 90, speed: Speed = Speed.MEDIAL) -> None:
     stepper.step_motors(
         motors=MOTORS,
         directions=TURN_LEFT,
-        num_steps=(degrees_to_steps(degrees),) * 2,
+        num_steps=[degrees_to_steps(degrees)] * 2,
         delay=speed.value,
     )
 
@@ -97,7 +96,7 @@ def turn_right(degrees: float = 90, speed: Speed = Speed.MEDIAL) -> None:
     stepper.step_motors(
         motors=MOTORS,
         directions=TURN_RIGHT,
-        num_steps=(degrees_to_steps(degrees),) * 2,
+        num_steps=[degrees_to_steps(degrees)] * 2,
         delay=speed.value,
     )
 
