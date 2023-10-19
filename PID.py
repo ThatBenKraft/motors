@@ -7,8 +7,9 @@ include path-finding or line-scouting (yet).
 import time
 
 import camera
-import stepper_driver
-from dual_motor_controls import move_steps
+
+import stepper
+from dual_control import move_steps
 
 __author__ = "Ben Kraft"
 __copyright__ = "None"
@@ -32,13 +33,12 @@ def main() -> None:
     """
     Runs main PID actions.
     """
-    stepper_driver.board_setup("BCM")
+    stepper.board_setup("BCM")
     # Defines variables for integral and derivative control
     previous_error = 0
     error_sum = 0
 
     while True:
-
         try:
             # Finds error from camera
             x_error, y_error, on_line = camera.find_line(False)
@@ -62,7 +62,7 @@ def main() -> None:
 
         except KeyboardInterrupt:
             # Cleans up board
-            stepper_driver.board_cleanup()
+            stepper.board_cleanup()
             break
 
     # gpio_driver.board_cleanup()
