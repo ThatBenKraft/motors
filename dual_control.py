@@ -14,8 +14,8 @@ from stepper import Directions, Motor
 # LEFT_MOTOR = Motor(11, 12, 13, 15)
 # RIGHT_MOTOR = Motor(29, 31, 32, 33)
 # BCM MOTORS
-LEFT_MOTOR = Motor(5, 6, 12, 13)
-RIGHT_MOTOR = Motor(17, 18, 27, 22)
+LEFT_MOTOR = Motor((5, 6, 12, 13))
+RIGHT_MOTOR = Motor((17, 18, 27, 22))
 MOTORS = [LEFT_MOTOR, RIGHT_MOTOR]
 
 

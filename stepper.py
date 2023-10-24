@@ -6,6 +6,7 @@ allows for customization of stepping sequence, direction, duration, and speed
 of motor. Includes a full and half-step sequence as well as single or offset 
 stepping options.
 """
+import copy
 import time
 from threading import Thread
 
@@ -106,7 +107,7 @@ class Motor:
     A class for stepper motors. Consists of four pins.
     """
 
-    def __init__(self, *pins: int) -> None:
+    def __init__(self, pins: tuple[int, int, int, int]) -> None:
         # Checks number of pins
         if len(pins) != 4:
             raise ValueError("Motor must consist of four integer pins!")
@@ -166,7 +167,7 @@ def step_motors(
     motors: list[Motor],
     num_steps: list[int],
     directions: list[int],
-    sequence: Sequence = Sequences.WHOLESTEP,
+    sequence: Sequence = Sequences.HALFSTEP,
     delay: float = MINIMUM_STEP_DELAY,
     flag: bool = False,
 ) -> None:
@@ -214,7 +215,7 @@ def step_motor(
     motor: Motor,
     num_steps: int,
     direction: int,
-    sequence: Sequence = Sequences.WHOLESTEP,
+    sequence: Sequence = Sequences.HALFSTEP,
     delay: float = MINIMUM_STEP_DELAY,
 ) -> None:
     """
@@ -235,13 +236,14 @@ def step_motor(
     elif num_steps < 0:
         direction *= -1
         num_steps *= -1
+    # Makes a copy of the input sequence to manipulate
+    adjusted_sequence = copy.copy(sequence)
     # Orients sequence
-    sequence._orient(direction)
+    adjusted_sequence._orient(direction)
     # Fits sequence to number of steps
-    sequence._fit_steps(num_steps)
-
+    adjusted_sequence._fit_steps(num_steps)
     # For each stage in sequence
-    for stage in sequence.stages:
+    for stage in adjusted_sequence.stages:
         # For each pin level in stage
         for pin_index, level in enumerate(stage):
             # Sets motor pin to specified level
@@ -250,7 +252,7 @@ def step_motor(
         time.sleep(delay)
 
 
-def board_setup(mode: str) -> None:
+def board_setup(mode: str = "BCM") -> None:
     """
     Sets up board mode and motor pins. Mode is BOARD or BCM.
     """
