@@ -7,8 +7,8 @@ of motor. Includes a full and half-step sequence as well as single or offset
 stepping options.
 """
 
-import itertools
 import time
+from itertools import permutations
 from threading import Thread
 
 import RPi.GPIO as GPIO
@@ -47,36 +47,44 @@ class Sequence:
         step_size: int = 1,
     ) -> None:
         # Assigns members
-        self.stages = stages
-        self.step_size = step_size
-        self.length = len(stages)
+        self._stages = stages
+        self._step_size = step_size
+        self._length = len(stages)
 
     def get_stages(self) -> list[tuple[int, int, int, int]]:
         """
         Returns sequences stages.
         """
-        return self.stages
+        return self._stages
+
+    def get_length(self) -> int:
+        """
+        Returns sequences length.
+        """
+        return self._length
 
     def _orient(self, direction: int) -> None:
         """
         Orients sequence in direction.
         """
-        self.stages = self.stages[::direction]
+        self._stages = self._stages[::direction]
 
-    def _fit_steps(self, num_steps: int) -> None:
+    def _encompass(self, num_steps: int) -> None:
         """
         Extends/restricts sequence to fit number of steps.
         """
         # Divides number of specified steps by number of steps in sequence
-        multiplier, remainder = divmod(num_steps, (self.length // self.step_size))
+        multiplier, remainder = divmod(num_steps, (self._length // self._step_size))
         # Prints warning if needed
         if remainder:
             print(
-                f"WARNING: Number of steps ({num_steps}) not factor of sequence ({len(self.stages)}). Future steps might mis-align."
+                f"WARNING: Number of steps ({num_steps}) not factor of sequence \
+                  ({len(self._stages)}). Future steps might mis-align."
             )
-        remainder_stages = self.stages[: (remainder * self.step_size)]
+        # Creates shorter version of sequence up to the remainder number of stages
+        remainder_stages = self._stages[: (remainder * self._step_size)]
         # Builds a long sequence from "multiplier" number of sequences and remainder
-        self.stages = self.stages * multiplier + remainder_stages
+        self._stages = self._stages * multiplier + remainder_stages
 
 
 class Sequences:
@@ -131,18 +139,18 @@ class Motor:
             GPIO.setup(pin, GPIO.OUT)  # type: ignore
             GPIO.output(pin, False)  # type: ignore
         # Creates member
-        self.pins = pins
+        self._pins = pins
 
-    def get_pin(self, index: int) -> int:
+    def get_pins(self) -> tuple[int, int, int, int]:
         """
-        Returns pin number at index.
+        Returns pin numbers.
         """
-        return self.pins[index]
+        return self._pins
 
 
 class _MotorThread(Thread):
     """
-    Allows for motor objects to be used concurrently in threads. MotorThread
+    Allows for motor objects to be used concurrently in threads. `_MotorThread`
     can be passed any motor object, as well as a number of steps, a direction,
     a sequnce, and a delay. Optional flag to show start/stop of thread.
     """
@@ -252,36 +260,37 @@ def step_motor(
         return
     # Flips direction if number of steps is negative
     elif num_steps < 0:
-        direction *= -1
         num_steps *= -1
+        direction *= -1
+
+    # Gets motor pins from motor
+    motor_pins = motor.get_pins()
     # Makes a copy of the input sequence to manipulate
-    # adjusted_sequence = copy.copy(sequence)
     adjusted_sequence = Sequence(sequence.get_stages())
     # Orients sequence
     adjusted_sequence._orient(direction)
     # Fits sequence to number of steps
-    adjusted_sequence._fit_steps(num_steps)
+    adjusted_sequence._encompass(num_steps)
     # For each stage in sequence
     for stage in adjusted_sequence.get_stages():
         # For each pin level in stage
-        for pin_index, level in enumerate(stage):
-            # Gets pin number at index
-            pin = motor.get_pin(pin_index)
+        for index, level in enumerate(stage):
             # Sets motor pin to specified level
-            GPIO.output(pin, bool(level))  # type: ignore
+            GPIO.output(motor_pins[index], bool(level))  # type: ignore
         # Delays between stages
         time.sleep(delay)
 
 
 def board_setup(mode: str = "BCM") -> None:
     """
-    Sets up board mode and motor pins. Mode is BOARD or BCM.
+    Sets up board mode and motor pins. Mode is BCM (GPIO pin numbers) or BOARD
+    (processor pin numbers).
     """
     # Sets board mode
-    if mode == "BOARD":
-        GPIO.setmode(GPIO.BOARD)  # type: ignore
-    elif mode == "BCM":
+    if mode == "BCM":
         GPIO.setmode(GPIO.BCM)  # type:ignore
+    elif mode == "BOARD":
+        GPIO.setmode(GPIO.BOARD)  # type: ignore
     else:
         raise ValueError("Use 'BCM' or 'BOARD' modes.")
 
@@ -306,17 +315,16 @@ def test_pins(
     `spacing` determines duration beween tests. `num_steps` is set to length
     of sequence if left at 0. Keyboard interupt will print last permutation.
     """
-    # Creates a list of all possible pin permutations
-    permutations = list(itertools.permutations(motor.pins, 4))
     # Sets number of steps to length of sequence if not specified
     if not num_steps:
-        num_steps = sequence.length
-
+        num_steps = sequence.get_length()
+    # Creates a list of all possible pin permutations
+    pin_permutations = list(permutations(motor.get_pins(), 4))
     # Initializes a current order
-    current_order = ()
+    current_order: tuple[int, ...] = ()
     try:
         # For each permutation:
-        for pin_order in permutations:
+        for pin_order in pin_permutations:
             # Sets current order
             current_order = pin_order
             # Prints pin order
