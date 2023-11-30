@@ -17,13 +17,16 @@ __author__ = "Ben Kraft"
 __copyright__ = "None"
 __credits__ = "Ben Kraft"
 __license__ = "MIT"
-__version__ = "0.1.4"
+__version__ = "0.2.0"
 __maintainer__ = "Ben Kraft"
 __email__ = "ben.kraft@rcn.com"
 __status__ = "Prototype"
 
+TOTAL_STEPS = 200
 
 MINIMUM_STAGE_DELAY = 0.005
+
+DEFAULT_RPM = 60
 
 
 # Defines motor spin directions
@@ -62,6 +65,12 @@ class Sequence:
         Returns sequences length.
         """
         return self._length
+
+    def get_step_size(self) -> int:
+        """
+        Returns sequences length.
+        """
+        return self._step_size
 
     def _orient(self, direction: int) -> None:
         """
@@ -161,7 +170,7 @@ class _MotorThread(Thread):
         num_steps: int,
         direction: int = Directions.CLOCKWISE,
         sequence: Sequence = Sequences.HALFSTEP,
-        delay: float = MINIMUM_STAGE_DELAY,
+        rpm: float = DEFAULT_RPM,
         flag: bool = False,
     ):
         Thread.__init__(self)
@@ -169,7 +178,7 @@ class _MotorThread(Thread):
         self.num_steps = num_steps
         self.direction = direction
         self.sequence = sequence
-        self.delay = delay
+        self.rpm = rpm
         self.flag = flag
 
     def run(self):
@@ -183,7 +192,7 @@ class _MotorThread(Thread):
             self.num_steps,
             self.direction,
             self.sequence,
-            self.delay,
+            self.rpm,
         )
         if self.flag:
             print(f"Stopping {self.name}. . .")
@@ -194,7 +203,7 @@ def step_motors(
     num_steps: list[int],
     directions: list[int],
     sequence: Sequence = Sequences.HALFSTEP,
-    delay: float = MINIMUM_STAGE_DELAY,
+    rpm: float = DEFAULT_RPM,
     flag: bool = False,
 ) -> None:
     """
@@ -218,7 +227,7 @@ def step_motors(
             num_steps[i],
             directions[i],
             sequence,
-            delay,
+            rpm,
             flag,
         )
         # Adds thread to list
@@ -242,7 +251,7 @@ def step_motor(
     num_steps: int,
     direction: int,
     sequence: Sequence = Sequences.HALFSTEP,
-    delay: float = MINIMUM_STAGE_DELAY,
+    rpm: float = DEFAULT_RPM,
 ) -> None:
     """
     Allows for a specified number of steps to be run in a direction using a
@@ -250,7 +259,9 @@ def step_motor(
     """
     if abs(direction) != 1:
         raise ValueError("Direction must be equal to 1 or -1!")
-    # Returns if delay is too small
+    # Calculates delay from rpm and sequence attributes
+    delay = 1 / (rpm * TOTAL_STEPS * sequence.get_step_size())
+    # Raises error if delay is too small
     if delay < MINIMUM_STAGE_DELAY:
         raise ValueError(
             f"Too small of delay. Must be equal to or larger than {MINIMUM_STAGE_DELAY}s!"
