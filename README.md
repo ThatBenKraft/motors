@@ -1,4 +1,4 @@
-# Stepper Motor Driver 🤖
+# Stepper Motor Driver 🤖 (OUT OF DATE AS OF 12/02/23)
 
 This module allows for the control of a multiple stepper motors. It includes functionality for customization of stepping sequence, direction, duration, and speed of motor. It was primarily designed around the use of Adafruit's _Stepper Motor Hybrid Bipolar 200.0 Step 350 mA 12VDC_ motor.
 
