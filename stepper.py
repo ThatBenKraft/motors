@@ -17,7 +17,7 @@ __author__ = "Ben Kraft"
 __copyright__ = "None"
 __credits__ = "Ben Kraft"
 __license__ = "MIT"
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 __maintainer__ = "Ben Kraft"
 __email__ = "ben.kraft@rcn.com"
 __status__ = "Prototype"
@@ -50,46 +50,9 @@ class Sequence:
         stages_per_step: int = 1,
     ) -> None:
         # Assigns members
-        self._stages = stages
+        self.stages = stages
         self._num_stages = len(stages)
         self._stages_per_step = stages_per_step
-
-    def get_stages(self) -> list[tuple[int, int, int, int]]:
-        """
-        Returns sequences stages.
-        """
-        return self._stages
-
-    def get_num_stages(self) -> int:
-        """
-        Returns sequences length.
-        """
-        return self._num_stages
-
-    def get_stages_per_step(self) -> int:
-        """
-        Returns sequences length.
-        """
-        return self._stages_per_step
-
-    def _adjusted_copy(self, total_stages: int, direction: int) -> "Sequence":
-        """
-        Returns with a copy of sequence expanded/restricted to total number of
-        stages, and in specified direction.
-        """
-        # Orients stages in specified direction.
-        oriented_stages = self._stages[::direction]
-        # Divides number of specified steps by number of steps in sequence
-        multiple, remainder = divmod(total_stages, self._num_stages)
-        # Prints rollover warning if needed
-        if remainder:
-            print(
-                f"WARNING: Number of steps ({total_stages}) not factor of sequence ({self._num_stages}). Future steps might mis-align."
-            )
-        # Builds a modified sequence from "multiplier" number of sequences and remainder
-        adjusted_stages = oriented_stages * multiple + oriented_stages[:remainder]
-        # Returns new sequences with adjusted stages and similar properties
-        return Sequence(adjusted_stages, self._stages_per_step)
 
 
 class Sequences:
@@ -144,13 +107,22 @@ class Motor:
             GPIO.setup(pin, GPIO.OUT)  # type: ignore
             GPIO.output(pin, False)  # type: ignore
         # Creates member
-        self._pins = pins
+        self.pins = pins
+        self._sequence_index = -1
+        self._sequence_length = 1
 
-    def get_pins(self) -> tuple[int, int, int, int]:
+    def _get_index(self, sequence: Sequence) -> int:
         """
-        Returns pin numbers.
+        Gets index from previous run scaled up to new sequence length
         """
-        return self._pins
+        return sequence._num_stages * self._sequence_index // self._sequence_length
+
+    def _set_index(self, index: int, sequence: Sequence) -> None:
+        """
+        Sets new values for previous sequence length and index.
+        """
+        self._sequence_length = sequence._num_stages
+        self._sequence_index = index % sequence._num_stages
 
 
 class _MotorThread(Thread):
@@ -163,13 +135,13 @@ class _MotorThread(Thread):
     def __init__(
         self,
         motor: Motor,
-        num_steps: int,
+        num_steps: float,
         direction: int,
         sequence: Sequence = Sequences.HALFSTEP,
         rpm: float = DEFAULT_RPM,
         flag_ends: bool = False,
     ):
-        Thread.__init__(self)
+        super().__init__()
         self.motor = motor
         self.num_steps = num_steps
         self.direction = direction
@@ -181,22 +153,25 @@ class _MotorThread(Thread):
         """
         Starts motor thread.
         """
-        if self.flag_ends:
-            print(f"Starting {self.name}. . .")
-        step_motor(
-            self.motor,
-            self.num_steps,
-            self.direction,
-            self.sequence,
-            self.rpm,
-        )
-        if self.flag_ends:
-            print(f"Stopping {self.name}. . .")
+        try:
+            if self.flag_ends:
+                print(f"Starting {self.name}. . .")
+            step_motor(
+                self.motor,
+                self.num_steps,
+                self.direction,
+                self.sequence,
+                self.rpm,
+            )
+            if self.flag_ends:
+                print(f"Stopping {self.name}. . .")
+        except Exception as e:
+            print(f"Thread {self.name} encountered an error: {e}")
 
 
 def step_motors(
     motors: list[Motor],
-    num_steps: list[int],
+    nums_steps: list[float],
     directions: list[int],
     sequence: Sequence = Sequences.HALFSTEP,
     rpm: float = DEFAULT_RPM,
@@ -206,26 +181,21 @@ def step_motors(
     Allows for motors to run a specified number of steps to be run in a
     direction using a sequence of custom stage delay.
     """
+    if not motors or not nums_steps or not directions:
+        raise ValueError("Lists of motors, steps, and directions must not be empty!")
     # Counts the number of motors being used
     num_motors = len(motors)
     # Checks list lengths to be the same size
-    if num_motors != len(directions) or num_motors != len(num_steps):
+    if num_motors != len(directions) or num_motors != len(nums_steps):
         raise ValueError(
             "Lists of motors, directions, and steps must all be of equal size!"
         )
     # Initializes threads list
     threads: list[_MotorThread] = []
     # For each motor:
-    for i in range(num_motors):
+    for motor, num_steps, direction in zip(motors, nums_steps, directions):
         # Creates a thread for the motor
-        thread = _MotorThread(
-            motors[i],
-            num_steps[i],
-            directions[i],
-            sequence,
-            rpm,
-            flag_ends,
-        )
+        thread = _MotorThread(motor, num_steps, direction, sequence, rpm, flag_ends)
         # Adds thread to list
         threads.append(thread)
         # Starts thread
@@ -244,7 +214,7 @@ def step_motors(
 
 def step_motor(
     motor: Motor,
-    num_steps: int,
+    num_steps: float,
     direction: int,
     sequence: Sequence = Sequences.HALFSTEP,
     rpm: float = DEFAULT_RPM,
@@ -255,11 +225,11 @@ def step_motor(
     if abs(direction) != 1:
         raise ValueError("Direction must be equal to 1 or -1!")
     # Calculates appropriate delay
-    delay = calculate_delay(sequence, rpm)
+    delay = _calculate_delay(sequence, rpm)
     # Raises error if delay is too small
     if delay < MINIMUM_STAGE_DELAY:
         raise ValueError(
-            f"Too small of delay. Must be equal to or larger than {MINIMUM_STAGE_DELAY}s!"
+            f"Too large of an RPM. Stage delay must be equal to or larger than {MINIMUM_STAGE_DELAY}s!"
         )
     # Returns early if there are no steps.
     if not num_steps:
@@ -269,26 +239,61 @@ def step_motor(
         num_steps *= -1
         direction *= -1
 
-    # Gets motor pins from motor
-    motor_pins = motor.get_pins()
     # Calcualtes number of stages from step size of sequence
-    num_stages = num_steps * sequence.get_stages_per_step()
+    total_num_stages = num_steps * sequence._stages_per_step
+    # Warns if number of steps does not translate into stages
+    if not total_num_stages.is_integer():
+        print(
+            f"WARNING: Number of steps does generate discrete number of steps. \
+              Rounding {total_num_stages:.2f} to {round(total_num_stages)} steps."
+        )
     # Makes a modified copy of the input sequence
-    adjusted_sequence = sequence._adjusted_copy(num_stages, direction)
-    # For each stage in sequence
-    for stage in adjusted_sequence.get_stages():
-        # For each pin level in stage
+    adjusted_sequence = _generate_sequence(
+        motor, round(total_num_stages), direction, sequence
+    )
+    # For each stage in sequence:
+    for stage in adjusted_sequence.stages:
+        # For each pin level in stage:
         for index, level in enumerate(stage):
             # Sets motor pin to specified level
-            GPIO.output(motor_pins[index], bool(level))  # type: ignore
+            GPIO.output(motor.pins[index], bool(level))  # type: ignore
         # Delays between stages
         time.sleep(delay)
 
 
-def calculate_delay(sequence: Sequence, rpm: float) -> float:
+def _generate_sequence(
+    motor: Motor, total_num_stages: int, direction: int, sequence: Sequence
+) -> Sequence:
+    """
+    Creates a custom sequences of specified length and direction for motor.
+    Takes into account previous sequences.
+    """
+    # Calculates multiple and remainder between sequence and total stage counts.
+    multiple, remainder = divmod(total_num_stages, sequence._num_stages)
+    # Orients stages according to direction
+    oriented_stages = sequence.stages[::direction]
+    # Acquires previous index from motor
+    previous_index = motor._get_index(sequence)
+    # Alters index based on direction
+    current_index = (
+        previous_index + 1 if direction == 1 else sequence._num_stages - previous_index
+    )
+    # Creates new stage palette shifted by index
+    shifted_stages = oriented_stages[current_index:] + oriented_stages[:current_index]
+    # Calculates new index from remainder and direction
+    new_index = previous_index + remainder * direction
+    # Stores sequence properties back in motor
+    motor._set_index(new_index, sequence)
+    # Creates a final sequences oriented and up to length
+    total_stages = shifted_stages * multiple + shifted_stages[:remainder]
+    return Sequence(total_stages, sequence._stages_per_step)
+
+
+def _calculate_delay(sequence: Sequence, rpm: float) -> float:
     """
     Calculates delay from rpm and sequence attributes.
-
+    """
+    """
          rev      1 min     (STEPS_PER_REVOLUTION) steps     (step_size) stages
     x * ----- * -------- * ------------------------------ * --------------------
          min     60 sec                 1 rev                      1 step
@@ -301,7 +306,7 @@ def calculate_delay(sequence: Sequence, rpm: float) -> float:
     = ---------------------------------------- --------
        (x * STEPS_PER_REVOLUTION * step_size)   stages
     """
-    return 60 / (rpm * STEPS_PER_REVOLUTION * sequence.get_stages_per_step())
+    return 60 / (rpm * STEPS_PER_REVOLUTION * sequence._stages_per_step)
 
 
 def board_setup(mode: str = "BCM") -> None:
@@ -340,9 +345,9 @@ def test_pins(
     """
     # Sets number of steps to length of sequence if not specified
     if not num_steps:
-        num_steps = sequence.get_num_stages()
+        num_steps = sequence._num_stages
     # Creates a list of all possible pin permutations
-    pin_permutations = list(permutations(motor.get_pins(), 4))
+    pin_permutations = list(permutations(motor.pins, 4))
     # Initializes a current order
     current_order: tuple[int, ...] = ()
     try:

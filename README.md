@@ -1,4 +1,4 @@
-# Stepper Motor Driver 🤖 (OUT OF DATE AS OF 12/02/23)
+# Stepper Motor Driver 🤖
 
 This module allows for the control of a multiple stepper motors. It includes functionality for customization of stepping sequence, direction, duration, and speed of motor. It was primarily designed around the use of Adafruit's _Stepper Motor Hybrid Bipolar 200.0 Step 350 mA 12VDC_ motor.
 
@@ -20,18 +20,18 @@ The arguments of `step_motor()` look like this:
 ```python
 def step_motor(
     motor: Motor,
-    num_steps: int,
+    num_steps: float,
     direction: int,
     sequence: Sequence = Sequences.HALFSTEP,
-    delay: float = MINIMUM_STAGE_DELAY,
+    rpm: float = DEFAULT_RPM,
 ) -> None:
 ```
 
-Here, you will specify your `Motor` object, as well as the number of steps, direction to spin, type of sequence, and step delay.
+Here, you will specify your `Motor` object, as well as the number of steps, direction to spin, type of sequence, and RPM.
 
-The number of steps is the number of stages you want your stepper to advance. This value can also be negative to reverse the direction.
+The number of steps is the number relates to the number of stages you want your stepper to advance. When using a sequence with an stage size smaller than its step size, this value can be useful to express as a decimal. `num_steps` can also be negative to reverse the direction.
 
-Directions can be found within the `Directions` class, with `Directions.CLOCKWISE` and `Directions.COUNTER_CLOCKWISE` corresponding to 1 and -1, respectively.
+Directions can be set manually as integers (1 or -1) or be found within the `Directions` class, with `Directions.CLOCKWISE` and `Directions.COUNTER_CLOCKWISE` corresponding to 1 and -1, respectively.
 
 Sequences can similarly be found within the `Sequences` class. There are five current sequences in this class:
 
@@ -46,17 +46,17 @@ The arguments of `step_motors()` look like this:
 ```python
 def step_motors(
     motors: list[Motor],
-    num_steps: list[int],
+    nums_steps: list[float],
     directions: list[int],
     sequence: Sequence = Sequences.HALFSTEP,
-    delay: float = MINIMUM_STAGE_DELAY,
-    flag: bool = False,
+    rpm: float = DEFAULT_RPM,
+    flag_ends: bool = False,
 ) -> None:
 ```
 
 The arguments remain the same, but the lists of motors, directions, and steps must all be of equal size. There is an additional argument to flag the start and end of all motor threads.
 
-`MINIMUM_STAGE_DELAY` is a default delay for both methods, and designates the lower bound for Nema Steppers.
+`DEFAULT_RPM` is a default RPM for both methods, and designates close to the upper bound for Nema Steppers.
 
 ## 🎛️ Customizations
 
@@ -66,11 +66,11 @@ Custom sequences can be made with the `Sequence()` constructor. Its arguments lo
 def __init__(
     self,
     stages: list[tuple[int, int, int, int]],
-    step_size: int = 1,
+    stages_per_step: int = 1,
 ) -> None:
 ```
 
-Sequences must be a list of four-pin "stage" tuples. Every stage has four integers that correspond to the level of each motor pin. Any non-zero integer will be interpreted as HIGH, and zero as LOW. An additional `step_size` integer indicates how many stages make up a single "step". For example, a halfstep sequence would have this value set to two, while a FULLSTEP sequence would have this set to one.
+Sequences must be a list of four-pin "stage" tuples. Every stage has four integers that correspond to the level of each motor pin. Any non-zero integer will be interpreted as HIGH, and zero as LOW. An additional `stages_per_step` integer indicates how many stages make up a single "step". For example, a `HALFSTEP` sequence would have this value set to two, while a `FULLSTEP` sequence would have this set to one.
 
 Stepper motors can occasionally be difficult to wire to double H-bridges like the L298N. As a tip, if your GPIO pins are both connected to the driver and referenced to the `Motor` object _sequentially_, the correct wiring for the output pins will match both ends of a coil to numbered output pins 1 and 3 or 2 and 4 (which still might require flipping of direction).
 
