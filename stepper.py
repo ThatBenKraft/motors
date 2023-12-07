@@ -24,7 +24,7 @@ __status__ = "Prototype"
 
 STEPS_PER_REVOLUTION = 200
 
-MINIMUM_STAGE_DELAY = 0.0025
+MINIMUM_STAGE_DELAY = 0.0015
 
 DEFAULT_RPM = 60
 
@@ -112,18 +112,18 @@ class Motor:
         self._sequence_index = -1
         self._sequence_length = 8
 
-    def _get_index(self, sequence: Sequence) -> int:
+    def _get_scaled_index(self, sequence_length: int) -> int:
         """
         Gets index from previous run scaled up to new sequence length
         """
-        return sequence._num_stages * self._sequence_index // self._sequence_length
+        return sequence_length * self._sequence_index // self._sequence_length
 
-    def _set_index(self, index: int, sequence: Sequence) -> None:
+    def _set_index(self, index: int, sequence_length: int) -> None:
         """
         Sets new values for previous sequence length and index.
         """
-        self._sequence_length = sequence._num_stages
         self._sequence_index = index
+        self._sequence_length = sequence_length
 
 
 class _MotorThread(Thread):
@@ -290,24 +290,29 @@ def _generate_sequence(
     Creates a custom sequences of specified length and direction for motor.
     Takes into account previous sequences.
     """
+    # Gets sequence length
+    sequence_length = sequence._num_stages
     # Calculates multiple and remainder between sequence and total stage counts.
-    multiple, remainder = divmod(total_num_stages, sequence._num_stages)
+    multiple, remainder = divmod(total_num_stages, sequence_length)
     # Orients stages according to direction
     oriented_stages = sequence.stages[::direction]
     # Acquires previous index from motor
-    previous_index = motor._get_index(sequence)
+    previous_index = motor._get_scaled_index(sequence_length)
     # Alters index based on direction
+    # Needs to add or subtract 1 away from current index before shifting
+    # Note: index for backwards = (sequence_length) - (previous_index - 1) - 1
     current_index = (
-        previous_index + 1 if direction == 1 else sequence._num_stages - previous_index
+        previous_index + 1 if direction == 1 else sequence_length - previous_index
     )
     # Creates new stage palette shifted by index
     shifted_stages = oriented_stages[current_index:] + oriented_stages[:current_index]
     # Calculates new index from remainder and direction
-    next_index = (previous_index + remainder * direction) % sequence._num_stages
+    next_index = (previous_index + remainder * direction) % sequence_length
     # Stores sequence properties back in motor
-    motor._set_index(next_index, sequence)
-    # Creates a final sequences oriented and up to length
+    motor._set_index(next_index, sequence_length)
+    # Creates a final sequence oriented and up to length
     total_stages = shifted_stages * multiple + shifted_stages[:remainder]
+    # Returns new sequence object from stages and existing stages per step
     return Sequence(total_stages, sequence._stages_per_step)
 
 
