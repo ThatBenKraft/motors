@@ -219,7 +219,7 @@ def step_motor(
     direction: int,
     sequence: Sequence = Sequences.HALFSTEP,
     rpm: float = DEFAULT_RPM,
-) -> None:
+) -> float:
     """
     Runs specified motor number of steps in direction. Optional sequence and
     RPM parameters.
@@ -235,7 +235,7 @@ def step_motor(
         )
     # Returns early if there are no steps.
     if not num_steps:
-        return
+        return 0
     # Flips direction if number of steps is negative
     elif num_steps < 0:
         num_steps *= -1
@@ -246,25 +246,35 @@ def step_motor(
     if not total_num_stages.is_integer():
         print(
             f"WARNING: Number of steps does generate discrete number of stages. \
-              Rounding {total_num_stages:.2f} to {round(total_num_stages)} steps."
+              Rounding {total_num_stages:.2f} to {round(total_num_stages)} stages."
         )
+        total_num_stages = round(total_num_stages)
     # Makes a modified copy of the input sequence
     adjusted_sequence = _generate_sequence(
-        motor, round(total_num_stages), direction, sequence
+        sequence,
+        int(total_num_stages),
+        direction,
+        motor,
     )
     # Output adjusted sequence to motor
     _output_sequence(motor, adjusted_sequence, delay)
     # Unlocks motor pins
     unlock(motor)
+    # Returns number of executed steps
+    return total_num_stages / adjusted_sequence._stages_per_step
 
 
-def _output_sequence(motor: Motor, sequence, delay: float) -> None:
+def _output_sequence(motor: Motor, sequence: Sequence, delay: float) -> None:
+    """
+    Outputs sequence directly to motor pins. Takes motor object, sequence, and
+    stage delay as parameters.
+    """
     # For each stage in sequence:
     for stage in sequence.stages:
-        # For each pin level in stage:
-        for index, level in enumerate(stage):
+        # For each motor pin and pin level in stage:
+        for pin, level in zip(motor.pins, stage):
             # Sets motor pin to specified level
-            GPIO.output(motor.pins[index], bool(level))  # type: ignore
+            GPIO.output(pin, bool(level))  # type: ignore
         # Delays between stages
         time.sleep(delay)
 
@@ -284,7 +294,10 @@ def lock(motor: Motor):
 
 
 def _generate_sequence(
-    motor: Motor, total_num_stages: int, direction: int, sequence: Sequence
+    sequence: Sequence,
+    total_num_stages: int,
+    direction: int,
+    motor: Motor,
 ) -> Sequence:
     """
     Creates a custom sequences of specified length and direction for motor.
@@ -359,7 +372,7 @@ def board_cleanup() -> None:
 
 def test_pins(
     motor: Motor,
-    num_steps: int = 0,
+    num_steps: float = 0,
     sequence: Sequence = Sequences.HALFSTEP,
     delay: float = MINIMUM_STAGE_DELAY,
     spacing: float = 0.5,
